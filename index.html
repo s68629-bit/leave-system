@@ -931,6 +931,14 @@ function initTabs() {
       document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
       btn.classList.add('active');
       $('pane_' + btn.dataset.tab).classList.add('active');
+      // 切換到管理後台時自動重新載入員工表
+      if (btn.dataset.tab === 'admin') loadEmpTable();
+      // 切換到主管總覽時自動載入
+      if (btn.dataset.tab === 'mgr') { loadMgrLeaves(); loadAllBalances(); }
+      // 切換到我的記錄時自動載入
+      if (btn.dataset.tab === 'myrecord') { loadMyLeaves(); loadMyOT(); }
+      // 切換到餘額時自動載入
+      if (btn.dataset.tab === 'balance') loadBalance('bal_cards');
     };
   });
 }
