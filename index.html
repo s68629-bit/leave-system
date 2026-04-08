@@ -905,16 +905,11 @@ function initApp() {
   loadBalance('bal_cards');
 
   if (hasRole('supervisor')) {
-    // supervisor 以上：先初始化主管/後台頁面，員工清單非同步載入
-    if (SESSION.is_admin || hasRole('admin')) {
-      initAdminPane();   // admin 直接初始化，不等 EMP_LIST
-    }
     loadEmpList().then(() => {
       initMgrPane();
-      // 員工清單載好後，重新整理後台的員工相關選單
       if (SESSION.is_admin || hasRole('admin')) {
-        loadEmpTable();  // 重新載入員工表格
-        refreshAdminSelects(); // 更新所有員工下拉選單
+        initAdminPane();      // 員工清單載好後才初始化後台
+        refreshAdminSelects();
       }
     });
   }
