@@ -173,6 +173,7 @@ body{font-family:"Noto Sans TC",system-ui,sans-serif;background:var(--bg);color:
 .cal-cell.other-month{background:#fafafa}
 .cal-cell.today{background:#eff6ff}
 .cal-cell.weekend{background:#fdf8ff}
+.cal-cell.company-holiday{background:#fff0f0!important}
 .cal-dn{font-size:11px;color:var(--muted);text-align:right;margin-bottom:3px}
 .cal-dn.today-num{
   background:var(--primary-light);color:#fff;border-radius:50%;
@@ -397,8 +398,8 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
           <div class="col-12">
             <div class="actions">
-              <button class="btn btn-secondary" id="lv_btnPreview">👁 預覽信件</button>
-              <button class="btn btn-primary" id="lv_btnSend">📧 儲存 + Gmail 寄出</button>
+              <button class="btn btn-primary" onclick="openMailModal(buildLeaveEmail(),'leave')">✉️ 預覽信件 / 寄出</button>
+              <button class="btn btn-secondary" onclick="sendLeave(false)">☁️ 僅儲存（不寄信）</button>
             </div>
             <div id="lv_status"></div>
             <div class="preview-box" id="lv_preview" style="display:none"></div>
@@ -411,9 +412,9 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
         <div class="card-title"><span class="icon">📅</span>本月請假月曆</div>
         <div class="cal-hdr">
           <div class="cal-nav">
-            <button id="lv_calPrev">‹</button>
+            <button onclick="calNav(-1)">‹</button>
             <div class="cal-month-label" id="lv_calLabel">-</div>
-            <button id="lv_calNext">›</button>
+            <button onclick="calNav(1)">›</button>
           </div>
         </div>
         <div class="cal-grid" id="lv_calGrid"></div>
@@ -451,7 +452,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
           <div class="col-12">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
               <label style="font-weight:700;font-size:12px;letter-spacing:.3px;color:var(--muted);text-transform:uppercase">加班人員</label>
-              <button class="btn btn-secondary" id="ot_addWorker" style="font-size:12px;padding:5px 12px">＋ 新增加班人</button>
+              <button class="btn btn-secondary" onclick="ot_addWorkerRow({})" style="font-size:12px;padding:5px 12px">＋ 新增加班人</button>
             </div>
             <div id="ot_workers"></div>
           </div>
@@ -463,8 +464,8 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
           <div class="col-12">
             <div class="actions">
-              <button class="btn btn-secondary" id="ot_btnPreview">👁 預覽信件</button>
-              <button class="btn btn-primary" id="ot_btnSend">📧 儲存 + Gmail 寄出</button>
+              <button class="btn btn-primary" onclick="openMailModal(buildOTEmail(),'ot')">✉️ 預覽信件 / 寄出</button>
+              <button class="btn btn-secondary" onclick="sendOT(false)">☁️ 僅儲存（不寄信）</button>
             </div>
             <div id="ot_status"></div>
             <div class="preview-box" id="ot_preview" style="display:none"></div>
@@ -478,13 +479,13 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
       <div class="card">
         <div class="card-title"><span class="icon">📅</span>我的請假記錄</div>
         <div class="toolbar">
-          <input type="month" id="rec_month"/>
-          <select id="rec_status">
+          <input type="month" id="rec_month" onchange="loadMyLeaves()"/>
+          <select id="rec_status" onchange="loadMyLeaves()">
             <option value="">全部狀態</option>
             <option value="approved">有效</option>
             <option value="cancelled">已取消</option>
           </select>
-          <button class="btn btn-secondary" id="rec_load">🔍 查詢</button>
+          <button class="btn btn-secondary" onclick="loadMyLeaves()">🔍 查詢</button>
         </div>
         <div class="tbl-wrap">
           <table id="rec_tbl">
@@ -500,8 +501,8 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
       <div class="card">
         <div class="card-title"><span class="icon">⏰</span>我的加班記錄</div>
         <div class="toolbar">
-          <input type="month" id="otrec_month"/>
-          <button class="btn btn-secondary" id="otrec_load">🔍 查詢</button>
+          <input type="month" id="otrec_month" onchange="loadMyOT()"/>
+          <button class="btn btn-secondary" onclick="loadMyOT()">🔍 查詢</button>
         </div>
         <div class="tbl-wrap">
           <table id="otrec_tbl">
@@ -540,13 +541,13 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
             <option value="特休">特休</option><option value="補休">補休</option>
             <option value="事假">事假</option><option value="病假">病假</option>
           </select>
-          <button class="btn btn-secondary" id="mgr_load">🔍 查詢</button>
-          <button class="btn btn-ok" id="mgr_export">📥 匯出 Excel</button>
+          <button class="btn btn-secondary" id="mgr_load" onclick="loadMgrLeaves()">🔍 查詢</button>
+          <button class="btn btn-ok" id="mgr_export" onclick="exportExcel()">📥 匯出 Excel</button>
         </div>
         <div class="tbl-wrap">
           <table id="mgr_tbl">
             <thead>
-              <tr><th>姓名</th><th>部門</th><th>假別</th><th>日期（起）</th><th>日期（迄）</th><th>時數</th><th>原因</th><th>狀態</th></tr>
+              <tr><th>姓名</th><th>部門</th><th>假別</th><th>日期（起）</th><th>日期（迄）</th><th>時數</th><th>原因</th><th>狀態</th><th id="mgr_th_action" style="display:none">操作</th></tr>
             </thead>
             <tbody id="mgr_tbody"></tbody>
           </table>
@@ -557,15 +558,8 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
       <!-- 餘額報表 -->
       <div class="card">
         <div class="card-title"><span class="icon">📊</span>人員餘額總表</div>
-        <div class="tbl-wrap">
-          <table>
-            <thead>
-              <tr><th>姓名</th><th>部門</th><th>假別</th><th>配額(h)</th><th>已用(h)</th><th>調整(h)</th><th>剩餘(h)</th></tr>
-            </thead>
-            <tbody id="mgr_bal_tbody"></tbody>
-          </table>
-        </div>
         <div id="mgr_bal_loading" class="loading" style="display:none"><div class="spinner"></div><br>載入中...</div>
+        <div id="mgr_bal_tree"></div>
       </div>
     </div>
 
@@ -575,6 +569,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
         <button class="admin-tab active" data-atab="emp">👥 員工管理</button>
         <button class="admin-tab" data-atab="bal">💰 餘額調整</button>
         <button class="admin-tab" data-atab="cfg">⚙️ 系統設定</button>
+        <button class="admin-tab" data-atab="cal">📅 行事曆管理</button>
         <button class="admin-tab" data-atab="export">📥 匯出資料</button>
       </div>
 
@@ -601,40 +596,91 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
       <!-- 餘額調整 -->
       <div class="admin-pane" id="atab_bal" style="display:none">
+
+        <!-- 特休自動計算 -->
+        <div class="card">
+          <div class="card-title"><span class="icon">🎯</span>特休自動計算</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+            <div class="fld" style="flex:0 0 140px">
+              <label>發放年度</label>
+              <input type="number" id="grant_year" value="2026"/>
+            </div>
+            <div class="fld" style="flex:1;min-width:160px">
+              <label>指定員工（留空=全部）</label>
+              <select id="grant_emp"><option value="">全部員工</option></select>
+            </div>
+            <button class="btn btn-primary" id="grant_btn" onclick="doManualGrant()">🎯 立即計算並發放特休</button>
+          </div>
+          <div id="grant_status"></div>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px">依勞基法年資計算各員工特休天數，自動寫入指定年度配額。</div>
+        </div>
+
+        <!-- 年度結轉 -->
+        <div class="card">
+          <div class="card-title"><span class="icon">⏩</span>特休年度結轉（進位制）</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+            <div class="fld" style="flex:0 0 140px">
+              <label>結轉來源年度</label>
+              <input type="number" id="carry_year" value="2025"/>
+            </div>
+            <button class="btn btn-accent" onclick="doCarryover()">⏩ 執行結轉到下一年</button>
+          </div>
+          <div id="carry_status"></div>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px">將指定年度未用完的特休，自動加入下一年度的調整時數，並記錄來源。</div>
+        </div>
+
+        <!-- 手動調整 -->
         <div class="card">
           <div class="card-title"><span class="icon">💰</span>手動調整假別餘額</div>
-          <div class="grid">
-            <div class="col-4 fld">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:12px">
+            <div class="fld">
               <label>員工</label>
-              <select id="adj_emp"></select>
+              <select id="adj_emp" style="width:100%"></select>
             </div>
-            <div class="col-3 fld">
+            <div class="fld">
               <label>年度</label>
-              <input type="number" id="adj_year" value="2026"/>
+              <input type="number" id="adj_year" value="2026" style="width:100%"/>
             </div>
-            <div class="col-3 fld">
+            <div class="fld">
               <label>假別</label>
-              <select id="adj_type">
+              <select id="adj_type" style="width:100%">
                 <option value="特休">特休</option><option value="補休">補休</option>
                 <option value="事假">事假</option><option value="病假">病假</option>
                 <option value="生理假">生理假</option><option value="家庭照顧假">家庭照顧假</option>
               </select>
             </div>
-            <div class="col-2 fld">
-              <label>調整時數</label>
-              <input type="number" id="adj_delta" placeholder="±" step="0.5"/>
+            <div class="fld">
+              <label>調整時數（±）</label>
+              <input type="number" id="adj_delta" placeholder="例：-8 或 +16" step="0.5" style="width:100%"/>
             </div>
-            <div class="col-8 fld">
-              <label>備註說明</label>
-              <input type="text" id="adj_note" placeholder="調整原因（必填）"/>
-            </div>
-            <div class="col-4">
-              <div class="actions">
-                <button class="btn btn-primary" id="adj_submit">確認調整</button>
-              </div>
+            <div class="fld" style="grid-column:span 2">
+              <label>備註說明（必填）</label>
+              <input type="text" id="adj_note" placeholder="調整原因" style="width:100%"/>
             </div>
           </div>
-          <div id="adj_status"></div>
+          <button class="btn btn-primary" id="adj_submit">確認調整</button>
+          <div id="adj_status" style="margin-top:10px"></div>
+        </div>
+
+        <!-- 多年度餘額總覽 -->
+        <div class="card">
+          <div class="card-title"><span class="icon">📊</span>多年度餘額總覽</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+            <div class="fld" style="flex:1;min-width:160px">
+              <label>篩選員工</label>
+              <select id="bal2_emp" style="width:100%"><option value="">全部員工</option></select>
+            </div>
+            <button class="btn btn-secondary" onclick="loadAllBalances2()">🔍 查詢</button>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr><th>姓名</th><th>部門</th><th>假別</th><th>年度</th><th>配額(h)</th><th>已用(h)</th><th>調整(h)</th><th>剩餘(h)</th><th>換算</th></tr>
+              </thead>
+              <tbody id="bal2_tbody"></tbody>
+            </table>
+          </div>
+          <div id="bal2_loading" class="loading" style="display:none"><div class="spinner"></div><br>載入中...</div>
         </div>
       </div>
 
@@ -647,6 +693,81 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
             <button class="btn btn-primary" id="cfg_save">💾 儲存設定</button>
           </div>
           <div id="cfg_status"></div>
+        </div>
+      </div>
+
+      <!-- 行事曆管理 -->
+      <div class="admin-pane" id="atab_cal" style="display:none">
+
+        <!-- PDF 匯入 -->
+        <div class="card">
+          <div class="card-title"><span class="icon">📄</span>從 PDF 匯入行事曆</div>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:14px">
+            上傳公司年度行事曆 PDF，系統將自動以 AI 解析放假日與補班日。
+          </p>
+
+          <!-- API Key 設定 -->
+          <div class="card" style="background:#f8fafc;margin-bottom:14px">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <div class="fld" style="flex:1;min-width:200px">
+                <label>Anthropic API Key</label>
+                <input type="password" id="cal_apiKey" placeholder="sk-ant-..." 
+                  style="font-family:monospace"/>
+              </div>
+              <div style="font-size:12px;color:var(--muted);margin-top:20px">
+                Key 只存在本機記憶體，不會傳送到伺服器
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+            <div class="fld" style="flex:1;min-width:200px">
+              <label>選擇行事曆 PDF</label>
+              <input type="file" id="cal_pdfFile" accept=".pdf"
+                style="padding:8px;border:1.5px solid var(--border);border-radius:7px;width:100%"/>
+            </div>
+            <button class="btn btn-primary" id="cal_parseBtn" onclick="parsePdfCalendar()" style="margin-bottom:1px">
+              🤖 AI 解析
+            </button>
+          </div>
+
+          <div id="cal_parseStatus" style="margin-top:10px"></div>
+
+          <!-- 解析結果預覽 -->
+          <div id="cal_preview" style="display:none;margin-top:14px">
+            <div style="font-weight:700;margin-bottom:8px">📋 解析結果預覽（確認後匯入）</div>
+            <div id="cal_previewList" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:10px;background:#fff"></div>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="btn btn-ok" onclick="importParsedCalendar()">✅ 確認匯入</button>
+              <button class="btn btn-secondary" onclick="document.getElementById('cal_preview').style.display='none'">取消</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 現有假日管理 -->
+        <div class="card">
+          <div class="card-title"><span class="icon">📅</span>現有行事曆假日</div>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:10px">
+            目前已內建 2026 年東立行事曆（21個假日）。可手動新增或刪除。
+          </p>
+          <div id="cal_list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px;margin-bottom:14px"></div>
+
+          <div class="card" style="background:#f8fafc">
+            <div style="font-weight:700;margin-bottom:10px">➕ 手動新增假日</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+              <div class="fld" style="flex:0 0 150px"><label>日期</label><input type="date" id="cal_newDate"/></div>
+              <div class="fld" style="flex:1;min-width:150px"><label>名稱</label><input type="text" id="cal_newName" placeholder="例：公司運動會"/></div>
+              <div class="fld" style="flex:0 0 110px">
+                <label>類型</label>
+                <select id="cal_newType">
+                  <option value="holiday">放假日</option>
+                  <option value="workday">補班日</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="addCalHoliday()">新增</button>
+            </div>
+          </div>
+          <div id="cal_status"></div>
         </div>
       </div>
 
@@ -684,6 +805,59 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
   </div><!-- /main-wrap -->
 </div><!-- /appScreen -->
+
+<!-- ════ 可編輯預覽寄信 Modal ════ -->
+<div class="modal-overlay" id="modal_mail">
+  <div class="modal" style="max-width:640px;width:96%">
+    <h3 id="modal_mail_title">📧 預覽與寄出</h3>
+    
+    <div class="fld" style="margin-bottom:10px">
+      <label>主旨</label>
+      <input type="text" id="mail_subject" style="width:100%;font-size:13px"/>
+    </div>
+    <!-- 快速加入收件人 -->
+    <div style="background:#f0f4f8;border-radius:8px;padding:10px;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">快速加入收件人</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <select id="mail_emp_sel" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;flex:1;min-width:160px">
+          <option value="">選擇員工...</option>
+        </select>
+        <button onclick="addMailRecipient('to')" class="btn btn-secondary" style="font-size:12px;padding:5px 10px">加入 To</button>
+        <button onclick="addMailRecipient('cc')" class="btn btn-secondary" style="font-size:12px;padding:5px 10px">加入 Cc</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div class="fld">
+        <label>收件人 To（逗號分隔）</label>
+        <textarea id="mail_to" style="width:100%;height:70px;font-size:12px;resize:vertical"></textarea>
+      </div>
+      <div class="fld">
+        <label>副件 Cc（逗號分隔）</label>
+        <textarea id="mail_cc" style="width:100%;height:70px;font-size:12px;resize:vertical"></textarea>
+      </div>
+    </div>
+    <div class="fld" style="margin-bottom:14px">
+      <label>信件內容</label>
+      <textarea id="mail_body" style="width:100%;height:220px;font-size:13px;resize:vertical;font-family:monospace"></textarea>
+    </div>
+    
+    <div style="background:#f8fafc;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:var(--muted)">
+      💡 可直接修改上方收件人、副件、主旨和內容後再寄出
+    </div>
+
+    <div id="modal_mail_status" style="margin-bottom:10px"></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="modal_mail_cancel">取消</button>
+      <button class="btn btn-secondary" id="modal_mail_outlook" onclick="sendViaOutlook()">
+        📨 Outlook 寄出
+      </button>
+      <button class="btn btn-primary" id="modal_mail_gmail" onclick="sendViaGmail()">
+        📧 Gmail 寄出
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- ════ 新增/編輯員工 Modal ════ -->
 <div class="modal-overlay" id="modal_emp">
@@ -794,14 +968,127 @@ const LV_TO       = [{name:'葉宇光',email:'benny.yeh@tony.com.tw'},{name:'黃
 const OT_TO       = [{name:'葉宇光',email:'benny.yeh@tony.com.tw'},{name:'黃寶蓮',email:'alice0914@tony.com.tw'}];
 const OT_CC_FIXED = [{name:'廖崑廷',email:'quentin_liao@glthome.com.tw'}];
 
+
+// ════ 東立材料 2026 年行事曆 ════
+const COMPANY_HOLIDAYS = {
+  "2026-01-01": { name:"元旦", type:"holiday" },
+  "2026-02-15": { name:"小年夜", type:"holiday" },
+  "2026-02-16": { name:"除夕", type:"holiday" },
+  "2026-02-17": { name:"春節初一", type:"holiday" },
+  "2026-02-18": { name:"春節初二", type:"holiday" },
+  "2026-02-19": { name:"春節初三", type:"holiday" },
+  "2026-02-20": { name:"小年夜補假", type:"holiday" },
+  "2026-02-27": { name:"和平紀念日補假", type:"holiday" },
+  "2026-02-28": { name:"和平紀念日", type:"holiday" },
+  "2026-04-03": { name:"兒童節補假", type:"holiday" },
+  "2026-04-04": { name:"兒童節", type:"holiday" },
+  "2026-04-05": { name:"清明節", type:"holiday" },
+  "2026-04-06": { name:"清明節補假", type:"holiday" },
+  "2026-05-01": { name:"勞動節", type:"holiday" },
+  "2026-06-19": { name:"端午節", type:"holiday" },
+  "2026-09-25": { name:"中秋節", type:"holiday" },
+  "2026-10-09": { name:"國慶日補假", type:"holiday" },
+  "2026-10-10": { name:"國慶日", type:"holiday" },
+  "2026-10-25": { name:"臺灣光復節", type:"holiday" },
+  "2026-10-26": { name:"臺灣光復節補假", type:"holiday" },
+  "2026-12-25": { name:"行憲紀念日", type:"holiday" },
+};
+
 // ════ 狀態 ════
-let SESSION = null; // { token, emp_id, name, dept, role, email }
+let SESSION = null;
+let _calDate = new Date(); // 月曆當前月份（全域）
+function calNav(delta) {
+  _calDate = new Date(_calDate.getFullYear(), _calDate.getMonth() + delta, 1);
+  drawLeaveCalendar(_calDate);
+} // { token, emp_id, name, dept, role, email }
 let EMP_LIST = [];  // 員工清單（主管以上可取得）
 let CFG = {};       // system_config
 
 // ════ 工具函式 ════
 const $ = id => document.getElementById(id);
+
+// 登出（頂層綁定，確保任何時候都能用）
+document.addEventListener('DOMContentLoaded', () => {
+  // 登出
+  const logoutBtn = document.getElementById('tb_logout');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      SESSION = null;
+      EMP_LIST = [];
+      CFG = {};
+      // 重置所有 Tab 顯示
+      document.getElementById('tab_mgr').style.display = 'none';
+      document.getElementById('tab_admin').style.display = 'none';
+      const mtabMgr = document.getElementById('mtab_mgr');
+      const mtabAdmin = document.getElementById('mtab_admin');
+      if (mtabMgr) mtabMgr.style.display = 'none';
+      if (mtabAdmin) mtabAdmin.style.display = 'none';
+      // 重置手機 tab 高亮
+      document.querySelectorAll('.mobile-tab-bar .mtab').forEach((t,i) => t.classList.toggle('active', i===0));
+      // 切回第一個 Tab
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn')[0]?.classList.add('active');
+      document.getElementById('pane_leave')?.classList.add('active');
+      document.getElementById('appScreen').style.display = 'none';
+      document.getElementById('loginScreen').style.display = 'flex';
+      document.getElementById('li_pwd').value = '';
+      document.getElementById('li_err').textContent = '';
+    });
+  }
+
+  // Admin 子 Tab 點擊 — 頂層綁定，不依賴 initAdminPane
+  document.querySelectorAll('.admin-tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.admin-tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.admin-pane').forEach(x => x.style.display = 'none');
+      t.classList.add('active');
+      const pane = document.getElementById('atab_' + t.dataset.atab);
+      if (pane) pane.style.display = '';
+
+      // 各 tab 的資料載入
+      if (t.dataset.atab === 'emp') {
+        loadEmpTable();
+      } else if (t.dataset.atab === 'bal') {
+        if (EMP_LIST.length === 0) {
+          api({action:'getEmployees'}).then(r => { if(r.success) EMP_LIST = r.data; initBalAdj(); });
+        } else { initBalAdj(); }
+      } else if (t.dataset.atab === 'cfg') {
+        loadCfg();
+      } else if (t.dataset.atab === 'cal') {
+        initCalPane();
+      } else if (t.dataset.atab === 'export') {
+        if (EMP_LIST.length === 0) {
+          api({action:'getEmployees'}).then(r => { if(r.success) EMP_LIST = r.data; initExport(); });
+        } else { initExport(); }
+      }
+    });
+  });
+});
 const pad2 = n => String(n).padStart(2,'0');
+// 時數轉「X天X小時」顯示
+function hoursToDisplay(h) {
+  const hours = parseFloat(h) || 0;
+  if (hours === 0) return '0 小時';
+  const days = Math.floor(hours / 8);
+  const rem  = hours % 8;
+  if (days > 0 && rem > 0) return `${days} 天 ${rem} 小時`;
+  if (days > 0) return `${days} 天`;
+  return `${rem} 小時`;
+}
+
+// 將日期字串轉為台灣本地日期（UTC+8），避免 UTC 日期差一天
+function toLocalDate(dtStr) {
+  if (!dtStr) return '';
+  const s = String(dtStr);
+  // 如果已是 YYYY-MM-DD 格式直接回傳
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // 處理 ISO 字串（含 T 或 Z）
+  const d = new Date(s);
+  const offset = 8 * 60; // UTC+8
+  const local = new Date(d.getTime() + offset * 60 * 1000);
+  return local.toISOString().slice(0, 10);
+}
 const todayStr = () => { const d=new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; };
 const enc = s => encodeURIComponent(s);
 const LEAVE_TYPE_COLORS = {
@@ -879,9 +1166,17 @@ function initApp() {
   $('tb_dept').textContent = SESSION.dept;
   $('tb_avatar').textContent = SESSION.name.charAt(0);
 
-  // 顯示對應 Tab
-  if (hasRole('supervisor')) $('tab_mgr').style.display = '';
-  if (SESSION.is_admin || hasRole('admin')) $('tab_admin').style.display = '';
+  // 顯示對應 Tab — 依權限
+  if (hasRole('supervisor')) {
+    $('tab_mgr').style.display = '';
+    const mtabMgr = document.getElementById('mtab_mgr');
+    if (mtabMgr) mtabMgr.style.display = '';
+  }
+  if (SESSION.is_admin) {
+    $('tab_admin').style.display = '';
+    const mtabAdmin = document.getElementById('mtab_admin');
+    if (mtabAdmin) mtabAdmin.style.display = '';
+  }
 
   // 填入申請人資訊
   $('lv_name').value   = SESSION.name;
@@ -898,6 +1193,8 @@ function initApp() {
 
   // 初始化
   initTabs();
+  // 登入後預先載入系統設定（calcOTHours 需要午休/晚餐時段）
+  api({ action:'getConfig' }).then(r => { if (r.success) CFG = r.data; });
   initLeaveForm();
   initOTForm();
   initMyRecord();
@@ -907,8 +1204,8 @@ function initApp() {
   if (hasRole('supervisor')) {
     loadEmpList().then(() => {
       initMgrPane();
-      if (SESSION.is_admin || hasRole('admin')) {
-        initAdminPane();      // 員工清單載好後才初始化後台
+      if (SESSION.is_admin) {  // 只有 admin 初始化管理後台
+        initAdminPane();
         refreshAdminSelects();
       }
     });
@@ -931,14 +1228,38 @@ function initTabs() {
       document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
       btn.classList.add('active');
       $('pane_' + btn.dataset.tab).classList.add('active');
+      syncMobileTab(btn.dataset.tab); // 同步手機 tab 高亮
       // 切換到管理後台時自動重新載入員工表
-      if (btn.dataset.tab === 'admin') loadEmpTable();
+      if (btn.dataset.tab === 'admin') {
+        if (!SESSION || !SESSION.is_admin) {
+          alert('❌ 您沒有管理後台權限');
+          // 切回第一個 tab
+          document.querySelectorAll('.tab-btn')[0].click();
+          return;
+        }
+        loadEmpTable();
+      }
       // 切換到主管總覽時自動載入
-      if (btn.dataset.tab === 'mgr') { loadMgrLeaves(); loadAllBalances(); }
+      if (btn.dataset.tab === 'mgr') {
+        if (!SESSION || !hasRole('supervisor')) {
+          alert('❌ 您沒有主管總覽權限');
+          document.querySelectorAll('.tab-btn')[0].click();
+          return;
+        }
+        const doMgr = () => { fillMgrEmpSelect(); loadMgrLeaves(); loadAllBalances(); };
+        if (EMP_LIST.length === 0) {
+          api({action:'getEmployees'}).then(r => { if(r.success) EMP_LIST=r.data; doMgr(); });
+        } else { doMgr(); }
+      }
       // 切換到我的記錄時自動載入
-      if (btn.dataset.tab === 'myrecord') { loadMyLeaves(); loadMyOT(); }
+      if (btn.dataset.tab === 'myrecord') {
+        // 確保 SESSION 存在才載入
+        if (SESSION) { loadMyLeaves(); loadMyOT(); }
+      }
       // 切換到餘額時自動載入
       if (btn.dataset.tab === 'balance') loadBalance('bal_cards');
+      // 切換到請假申請時繪製月曆
+      if (btn.dataset.tab === 'leave') { _calDate = new Date(); drawLeaveCalendar(_calDate); }
     };
   });
 }
@@ -969,16 +1290,13 @@ function initLeaveForm() {
   // 代理人選單（從員工清單）
   loadAgentOptions();
 
-  $('lv_btnPreview').onclick  = () => { const m=buildLeaveEmail(); if(m) { $('lv_preview').textContent=`To: ${m.toTxt}\nCc: ${m.ccTxt}\nSubject: ${m.subject}\n\n${m.body}`; $('lv_preview').style.display=''; } };
-  $('lv_btnSend').onclick     = () => sendLeave(true);
+  $('lv_btnPreview').onclick  = () => openMailModal(buildLeaveEmail(), 'leave');
+  $('lv_btnSend').onclick     = () => openMailModal(buildLeaveEmail(), 'leave');
   $('lv_btnSaveOnly').onclick = () => sendLeave(false);
   $('lv_btnReset').onclick    = resetLeaveForm;
 
   // 月曆
-  let calDate = new Date();
-  $('lv_calPrev').onclick = () => { calDate.setMonth(calDate.getMonth()-1); drawLeaveCalendar(calDate); };
-  $('lv_calNext').onclick = () => { calDate.setMonth(calDate.getMonth()+1); drawLeaveCalendar(calDate); };
-  drawLeaveCalendar(calDate);
+  drawLeaveCalendar(_calDate);
 }
 
 function calcLeaveHours() {
@@ -1052,6 +1370,29 @@ async function sendLeave(sendMail) {
   const hours = getLeaveHours();
   if (!hours) { showStatus('lv_status','請先填寫請假日期與時段，確認時數後再送出','err'); return; }
 
+  // 若非寄信模式，直接儲存不需確認
+  if (!sendMail) {
+    // 僅儲存
+    const params = {
+      action:'submitLeave',
+      leave_type: $('lv_type').value,
+      start_dt:   $('lv_startDate').value,
+      end_dt:     $('lv_endDate').value,
+      hours:      String(getLeaveHours()),
+      period:     $('lv_period').value,
+      reason:     $('lv_reason').value === '__custom' ? $('lv_reasonCustom').value : $('lv_reason').value,
+      note:       $('lv_note').value,
+      send_gmail: 'false',
+    };
+    showStatus('lv_status','儲存中...','warn');
+    const res = await api(params);
+    if (!res.success) { showStatus('lv_status', res.message, 'err'); return; }
+    showStatus('lv_status', '✅ 已儲存（未寄信）— 記錄已建立', 'ok');
+    loadBalance('lv_balSummary', true);
+    drawLeaveCalendar(_calDate);
+    return;
+  }
+
   if (sendMail) {
     // 三-3: 確認對話框
     const m = buildLeaveEmail();
@@ -1079,7 +1420,7 @@ async function sendLeave(sendMail) {
   if (!res.success) { showStatus('lv_status', res.message, 'err'); return; }
   showStatus('lv_status', '✅ ' + res.data.message + (sendMail?' 通知信已寄出':''), 'ok');
   loadBalance('lv_balSummary', true);
-  drawLeaveCalendar(new Date());
+  drawLeaveCalendar(_calDate);
 }
 
 function buildLeaveEmail() {
@@ -1089,10 +1430,17 @@ function buildLeaveEmail() {
   const period = $('lv_period').value;
   const hours  = getLeaveHours();
   const reason = $('lv_reason').value === '__custom' ? $('lv_reasonCustom').value : $('lv_reason').value;
-  const agent  = $('lv_agent').value;
+  const agentId= $('lv_agent').value;
+
+  // 找代理人名稱
+  const agentEmp = EMP_LIST.find(e=>String(e.emp_id)===String(agentId));
+  const agentName= agentEmp ? agentEmp.name : (agentId||'無');
+
+  // 找直屬主管 email（To）
+  const me = EMP_LIST.find(e=>String(e.emp_id)===String(SESSION.emp_id)) || {};
+  const supervisorEmp = EMP_LIST.find(e=>String(e.emp_id)===String(me.supervisor_id));
 
   const periodTxt = { day:'全天', am:'上半天', pm:'下半天', hour:`${$('lv_startTime').value}–${$('lv_endTime').value}` }[period]||'';
-  const agentTxt  = agent ? `代理人：${agent}` : '代理人：無';
 
   const body = [
     '請假申請',
@@ -1103,21 +1451,34 @@ function buildLeaveEmail() {
     `時　段：${periodTxt}`,
     `時　數：${hours} 小時`,
     `原　因：${reason}`,
-    agentTxt,
+    `代理人：${agentName}`,
     $('lv_note').value ? `備　註：${$('lv_note').value}` : '',
     '',
     '（本信由請假系統產生）'
-  ].filter(l => l !== null).join('\n');
+  ].filter(l=>l!==null).join('\n');
 
-  const cc = [];
-  const selfEmail = SESSION.email;
-  if (selfEmail) cc.push(selfEmail);
+  // 收件人規則：To=直屬主管，Cc=自己+人資+代理人+其他通知人（去重）
+  const toEmails = [];
+  if (supervisorEmp?.email) toEmails.push(supervisorEmp.email);
+  else if (LV_TO[0]?.email) toEmails.push(LV_TO[0].email); // 備用
+
+  const ccSet = new Set();
+  if (SESSION.email) ccSet.add(SESSION.email);
+  if (CFG.hr_email)  ccSet.add(CFG.hr_email);
+  if (agentEmp?.email) ccSet.add(agentEmp.email);
+  if (me.notify_emails) me.notify_emails.split(',').map(e=>e.trim()).filter(e=>e).forEach(e=>ccSet.add(e));
+  // 排除已在 To 的
+  toEmails.forEach(e=>ccSet.delete(e));
+  const ccEmails = [...ccSet];
+
+  const toNames = toEmails.map(e=>{ const emp=EMP_LIST.find(x=>x.email===e); return emp?emp.name:e; });
+  const ccNames = ccEmails.map(e=>{ const emp=EMP_LIST.find(x=>x.email===e); return emp?emp.name:e; });
 
   return {
-    toEmails: LV_TO.map(t=>t.email).join(','),
-    ccEmails: cc.join(','),
-    toTxt:    LV_TO.map(t=>t.name).join('、'),
-    ccTxt:    cc.join('、'),
+    toEmails: toEmails.join(','),
+    ccEmails: ccEmails.join(','),
+    toTxt:    toNames.join('、'),
+    ccTxt:    ccNames.join('、'),
     subject:  `請假申請 ${SESSION.name} ${type} ${start}`,
     body
   };
@@ -1145,8 +1506,13 @@ async function drawLeaveCalendar(date) {
   $('lv_calLabel').textContent = `${y} 年 ${m+1} 月`;
   const monthStr = `${y}-${pad2(m+1)}`;
 
-  const res = await api({ action:'getLeaves', month:monthStr });
-  const evs = res.success ? res.data : [];
+  // 同時載入請假和加班
+  const [resLeave, resOT] = await Promise.all([
+    api({ action:'getLeaves', month:monthStr }),
+    api({ action:'getOvertimes', month:monthStr, emp_id: SESSION.emp_id })
+  ]);
+  const evs = resLeave.success ? resLeave.data : [];
+  const calOTEvs = resOT.success ? resOT.data : [];
 
   const grid = $('lv_calGrid');
   grid.innerHTML = '';
@@ -1176,8 +1542,18 @@ async function drawLeaveCalendar(date) {
     dn.textContent = d;
     cell.appendChild(dn);
 
+    // 顯示國定假日/公司假日標籤
+    const hday = COMPANY_HOLIDAYS[dtStr];
+    if (hday) {
+      const hbadge = document.createElement('div');
+      hbadge.style.cssText = 'font-size:10px;color:#dc2626;font-weight:700;margin-bottom:2px;';
+      hbadge.textContent = '🎌 ' + hday.name;
+      cell.appendChild(hbadge);
+      cell.style.background = '#fff5f5';
+    }
+
     // 當天的請假
-    evs.filter(ev => ev.start_dt <= dtStr && ev.end_dt >= dtStr && ev.status !== 'cancelled')
+    evs.filter(ev => toLocalDate(ev.start_dt) <= dtStr && toLocalDate(ev.end_dt) >= dtStr && ev.status !== 'cancelled')
        .forEach(ev => {
          const badge = document.createElement('span');
          badge.className = `ev-badge ${LEAVE_TYPE_COLORS[ev.leave_type]||'tag-gray'}`;
@@ -1185,6 +1561,18 @@ async function drawLeaveCalendar(date) {
          badge.title = `${ev.name} ${ev.leave_type} ${ev.hours}h`;
          cell.appendChild(badge);
        });
+    // 當天的加班（橘色）
+    if (calOTEvs) {
+      calOTEvs.filter(ev => toLocalDate(ev.ot_date) === dtStr && ev.status !== 'cancelled')
+        .forEach(ev => {
+          const badge = document.createElement('span');
+          badge.className = 'ev-badge';
+          badge.style.cssText = 'background:#fff3e0;color:#e65100;border:1px solid #ffb74d';
+          badge.textContent = `⏰ ${ev.name||''} ${ev.hours}h`;
+          badge.title = `加班 ${ev.hours}h`;
+          cell.appendChild(badge);
+        });
+    }
 
     grid.appendChild(cell);
   }
@@ -1218,8 +1606,8 @@ async function loadAgentOptions() {
 function initOTForm() {
   ot_addWorkerRow({ isApplicant: true });
   $('ot_addWorker').onclick = () => ot_addWorkerRow({});
-  $('ot_btnPreview').onclick  = () => { const m=buildOTEmail(); if(m){ $('ot_preview').textContent=`To: ${m.toTxt}\nCc: ${m.ccTxt}\nSubject: ${m.subject}\n\n${m.body}`; $('ot_preview').style.display=''; } };
-  $('ot_btnSend').onclick     = () => sendOT(true);
+  $('ot_btnPreview').onclick  = () => openMailModal(buildOTEmail(), 'ot');
+  $('ot_btnSend').onclick     = () => openMailModal(buildOTEmail(), 'ot');
   $('ot_btnSaveOnly').onclick = () => sendOT(false);
   $('ot_btnReset').onclick    = resetOTForm;
 }
@@ -1231,45 +1619,46 @@ function ot_addWorkerRow(opts={}) {
   div.className = 'ot-row';
   div.id = `ot_w_${id}`;
 
-  const names = EMP_LIST.length
-    ? EMP_LIST.map(e=>`<option value="${e.emp_id}" data-name="${e.name}" data-dept="${e.dept}">${e.name}（${e.dept}）</option>`).join('')
-    : `<option value="${SESSION.emp_id}" data-name="${SESSION.name}" data-dept="${SESSION.dept}">${SESSION.name}</option>`;
+  // 優先用 EMP_LIST，若為空則至少顯示登入者
+  const empOptions = EMP_LIST.length ? EMP_LIST : (SESSION ? [SESSION] : []);
+  const names = empOptions.map(e=>`<option value="${e.emp_id}" data-name="${e.name}" data-dept="${e.dept||''}">${e.name}（${e.dept||''}）</option>`).join('')
+    + `<option value="__other">其他</option>`;
 
   div.innerHTML = `
-    <div class="ot-row-hd">
-      <div class="ot-col">
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 80px${id>1?' 40px':''};gap:8px;align-items:end;margin-bottom:8px">
+      <div class="fld" style="margin:0">
         <label>加班人</label>
-        <select class="ot-worker-sel" style="min-width:130px">
+        <select class="ot-worker-sel" style="width:100%">
           ${names}
           <option value="__other">其他</option>
         </select>
       </div>
-      <div class="ot-col ot-other" style="display:none">
-        <label>姓名</label><input type="text" class="ot-other-name" placeholder="姓名" style="width:90px"/>
-      </div>
-      <div class="ot-col">
+      <div class="fld" style="margin:0">
         <label>加班類別</label>
-        <select class="ot-cat" style="min-width:90px">
+        <select class="ot-cat" style="width:100%">
           <option value="平日">平日</option>
           <option value="例假">例假日</option>
           <option value="國定">國定假日</option>
         </select>
       </div>
-      <div class="ot-col">
+      <div class="fld" style="margin:0">
         <label>開始</label>
-        <input type="time" class="ot-start" step="1800" style="width:100px"/>
+        <input type="time" class="ot-start" step="1800" style="width:100%"/>
       </div>
-      <div class="ot-col">
+      <div class="fld" style="margin:0">
         <label>結束</label>
-        <input type="time" class="ot-end" step="1800" style="width:100px"/>
+        <input type="time" class="ot-end" step="1800" style="width:100%"/>
       </div>
-      <div class="ot-col">
+      <div class="fld" style="margin:0">
         <label>時數</label>
-        <input type="text" class="ot-hours" style="width:70px" readonly placeholder="自動"/>
+        <input type="text" class="ot-hours" style="width:100%" readonly placeholder="自動"/>
       </div>
-      ${id > 1 ? `<div class="ot-col"><label>&nbsp;</label><button onclick="document.getElementById('ot_w_${id}').remove()" class="btn btn-danger" style="padding:7px 10px">✕</button></div>` : ''}
+      ${id > 1 ? `<div style="padding-bottom:2px"><button onclick="document.getElementById('ot_w_${id}').remove()" class="btn btn-danger" style="width:36px;padding:8px 0;font-size:14px">✕</button></div>` : ''}
     </div>
-    <div class="fld">
+    <div class="ot-other" style="display:none;margin-bottom:8px">
+      <div class="fld" style="margin:0"><label>其他人員姓名</label><input type="text" class="ot-other-name" placeholder="姓名" style="width:200px"/></div>
+    </div>
+    <div class="fld" style="margin-bottom:0">
       <label>原因</label>
       <input type="text" class="ot-reason" placeholder="加班原因（必填）" style="width:100%"/>
     </div>
@@ -1322,7 +1711,7 @@ async function sendOT(sendMail) {
     start_time: workers[0].start,
     end_time:   workers[0].end,
     hours:      String(workers[0].hours),
-    period_type: workers[0].cat || '平日',
+    period_type: workers[0]?.cat || '平日',
     reason:     workers[0].reason,
     note:       $('ot_note').value,
     send_gmail: sendMail ? 'true' : 'false',
@@ -1332,7 +1721,9 @@ async function sendOT(sendMail) {
   showStatus('ot_status','送出中...','warn');
   const res = await api(params);
   if (!res.success) { showStatus('ot_status', res.message, 'err'); return; }
-  showStatus('ot_status', '✅ ' + res.data.message + (sendMail?' 通知信已寄出':''), 'ok');
+  showStatus('ot_status', '✅ ' + res.data.message, 'ok');
+  // 若目前在我的記錄 tab，自動重整
+  loadMyOT();
 }
 
 function collectOTWorkers() {
@@ -1358,7 +1749,7 @@ function buildOTEmail() {
   const workers = collectOTWorkers();
   if (!workers.length) return null;
   const otDate = $('ot_date').value;
-  const pType  = $('ot_periodType').value;
+  const pType  = workers[0]?.cat || '平日'; // 從第一位加班人取得類別
 
   const lines = [
     '加班申請',
@@ -1377,11 +1768,30 @@ function buildOTEmail() {
   OT_CC_FIXED.forEach(c => cc.push(c.email));
   if (SESSION.email) cc.push(SESSION.email);
 
+  // 收件人：To=直屬主管+最高主管，Cc=自己+人資（去重）
+  const me2 = EMP_LIST.find(e=>String(e.emp_id)===String(SESSION.emp_id))||{};
+  const supEmp2 = EMP_LIST.find(e=>String(e.emp_id)===String(me2.supervisor_id));
+  const toSet = new Set();
+  if (supEmp2?.email) toSet.add(supEmp2.email);
+  if (CFG.top_email)  toSet.add(CFG.top_email);
+  if (!toSet.size && OT_TO[0]?.email) toSet.add(OT_TO[0].email);
+
+  const ccSet2 = new Set();
+  if (SESSION.email) ccSet2.add(SESSION.email);
+  if (CFG.hr_email)  ccSet2.add(CFG.hr_email);
+  OT_CC_FIXED.forEach(c=>{ if(c.email) ccSet2.add(c.email); });
+  toSet.forEach(e=>ccSet2.delete(e));
+
+  const toArr = [...toSet];
+  const ccArr = [...ccSet2];
+  const toNames2 = toArr.map(e=>{ const emp=EMP_LIST.find(x=>x.email===e); return emp?emp.name:e; });
+  const ccNames2 = ccArr.map(e=>{ const emp=EMP_LIST.find(x=>x.email===e); return emp?emp.name:e; });
+
   return {
-    toEmails: OT_TO.map(t=>t.email).join(','),
-    ccEmails: cc.join(','),
-    toTxt: OT_TO.map(t=>t.name).join('、'),
-    ccTxt: cc.join('、'),
+    toEmails: toArr.join(','),
+    ccEmails: ccArr.join(','),
+    toTxt: toNames2.join('、'),
+    ccTxt: ccNames2.join('、'),
     subject: `加班申請 ${SESSION.name} ${otDate}`,
     body: lines.join('\n')
   };
@@ -1412,10 +1822,11 @@ async function loadMyLeaves() {
   const statusFilter = $('rec_status').value;
   const params = {
     action:'getLeaves',
-    month: $('rec_month').value,
     emp_id: SESSION.emp_id,
     include_cancelled: 'true',
   };
+  const recMonth = $('rec_month').value;
+  if (recMonth) params.month = recMonth;
   const res = await api(params);
   const tbody = $('rec_tbody');
   tbody.innerHTML = '';
@@ -1427,10 +1838,10 @@ async function loadMyLeaves() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><span class="tag ${LEAVE_TYPE_COLORS[r.leave_type]||'tag-gray'}">${r.leave_type}</span></td>
-      <td>${r.start_dt}</td><td>${r.end_dt}</td>
+      <td>${toLocalDate(r.start_dt)}</td><td>${toLocalDate(r.end_dt)}</td>
       <td>${r.hours}h</td><td>${r.reason||''}</td>
       <td><span class="tag ${r.status==='cancelled'?'tag-red':'tag-green'}">${r.status==='cancelled'?'已取消':'有效'}</span></td>
-      <td style="font-size:12px;color:var(--muted)">${(r.created_at||'').slice(0,10)}</td>
+      <td style="font-size:12px;color:var(--muted)">${toLocalDate(r.created_at)}</td>
       <td>${r.status!=='cancelled'?`<button class="btn btn-danger" style="font-size:12px;padding:4px 10px" onclick="cancelLeave('${r.id}',this)">取消</button>`:''}</td>
     `;
     tbody.appendChild(tr);
@@ -1438,15 +1849,49 @@ async function loadMyLeaves() {
 }
 
 async function cancelLeave(id, btn) {
-  if (!confirm('確認取消此請假？')) return;
+  if (!confirm('確認取消此請假？取消後將開啟通知寄信視窗。')) return;
   btn.disabled = true;
   const res = await api({ action:'cancelLeave', leave_id:id });
-  if (res.success) { loadMyLeaves(); loadBalance('lv_balSummary',true); loadBalance('bal_cards'); }
-  else alert(res.message);
+  btn.disabled = false;
+  if (!res.success) { alert('取消失敗：' + res.message); return; }
+
+  loadMyLeaves();
+  loadBalance('lv_balSummary', true);
+  loadBalance('bal_cards');
+
+  // 取消成功 → 開啟通知 modal
+  const d = res.data?.leaveData;
+  if (d) {
+    const body = [
+      '【取消通知】請假申請已取消',
+      '',
+      `申請人：${SESSION.name}（${SESSION.emp_id}）`,
+      `部　門：${SESSION.dept}`,
+      `假　別：${d.leave_type}`,
+      `日　期：${d.start_dt}${d.start_dt!==d.end_dt?' ～ '+d.end_dt:''}`,
+      `時　數：${d.hours} 小時`,
+      '',
+      '（本信由請假系統產生）'
+    ].join('\n');
+
+    // 取得收件人（與請假申請相同邏輯）
+    const m = buildLeaveEmail();
+    openMailModal({
+      subject: `【取消通知】請假申請 ${SESSION.name} ${d.leave_type} ${d.start_dt}`,
+      toEmails: m?.toEmails || '',
+      ccEmails: m?.ccEmails || '',
+      toTxt: m?.toTxt || '',
+      ccTxt: m?.ccTxt || '',
+      body
+    }, 'cancel');
+  }
 }
 
 async function loadMyOT() {
-  const res = await api({ action:'getOvertimes', month:$('otrec_month').value, emp_id:SESSION.emp_id, include_cancelled:'true' });
+  const otParams = { action:'getOvertimes', emp_id:SESSION.emp_id, include_cancelled:'true' };
+  const otMonth = $('otrec_month').value;
+  if (otMonth) otParams.month = otMonth;
+  const res = await api(otParams);
   const tbody = $('otrec_tbody');
   tbody.innerHTML = '';
   const otRows = res.success ? res.data : [];
@@ -1455,9 +1900,9 @@ async function loadMyOT() {
   otRows.forEach(r => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${r.ot_date}</td>
+      <td>${toLocalDate(r.ot_date)}</td>
       <td><span class="tag tag-blue">${r.period_type||'平日'}</span></td>
-      <td>${r.start_time||''}–${r.end_time||''}</td>
+      <td>${r.start_time||'--'}–${r.end_time||'--'}</td>
       <td>${r.hours}h</td>
       <td><span class="tag ${r.status==='cancelled'?'tag-red':'tag-green'}">${r.status==='cancelled'?'已取消':'有效'}</span></td>
       <td>${r.status!=='cancelled'?`<button class="btn btn-danger" style="font-size:12px;padding:4px 10px" onclick="cancelOT('${r.id}',this)">取消</button>`:''}</td>
@@ -1467,11 +1912,40 @@ async function loadMyOT() {
 }
 
 async function cancelOT(id, btn) {
-  if (!confirm('確認取消此加班？')) return;
+  if (!confirm('確認取消此加班？取消後補休將退回，並開啟通知寄信視窗。')) return;
   btn.disabled = true;
   const res = await api({ action:'cancelOT', ot_id:id });
-  if (res.success) { loadMyOT(); loadBalance('bal_cards'); }
-  else alert(res.message);
+  btn.disabled = false;
+  if (!res.success) { alert('取消失敗：' + res.message); return; }
+
+  loadMyOT();
+  loadBalance('bal_cards');
+
+  // 開啟通知 modal
+  const d = res.data?.otData;
+  if (d) {
+    const body = [
+      '【取消通知】加班申請已取消',
+      '',
+      `申請人：${SESSION.name}（${SESSION.emp_id}）`,
+      `部　門：${SESSION.dept}`,
+      `加班日期：${d.ot_date}`,
+      `時　間：${d.start_time} – ${d.end_time}`,
+      `時　數：${d.hours} 小時（補休已退回）`,
+      '',
+      '（本信由請假系統產生）'
+    ].join('\n');
+
+    const m = buildOTEmail();
+    openMailModal({
+      subject: `【取消通知】加班申請 ${SESSION.name} ${d.ot_date}`,
+      toEmails: m?.toEmails || '',
+      ccEmails: m?.ccEmails || '',
+      toTxt: m?.toTxt || '',
+      ccTxt: m?.ccTxt || '',
+      body
+    }, 'cancel');
+  }
 }
 
 // ════ 餘額 ════
@@ -1494,22 +1968,44 @@ async function loadBalance(targetId, mini=false) {
   if (!mini) $('bal_year').textContent = `${year} 年度`;
 
   el.innerHTML = '';
+  const QUOTA_TYPES = ['特休', '補休'];
   const show = mini
     ? res.data.filter(b => ['特休','補休'].includes(b.leave_type))
     : res.data;
 
   show.forEach(b => {
-    const avail = parseFloat(b.available)||0;
-    const total = parseFloat(b.total_hours)||0;
-    const pct = total > 0 ? avail/total : 1;
-    const cls = pct < 0.2 ? 'low' : (pct > 0.5 ? 'ok' : '');
+    const avail   = parseFloat(b.available) || 0;
+    const total   = parseFloat(b.total_hours) || 0;
+    const used    = parseFloat(b.used_hours) || 0;
+    const adjust  = parseFloat(b.adjust_hours) || 0;
+    const hasQuota = QUOTA_TYPES.includes(b.leave_type);
+
+    let cls, mainVal, mainUnit, detail;
+    if (hasQuota) {
+      // 特休/補休：顯示可用配額（最小為 0）
+      const availShow = Math.max(0, avail);
+      const pct = total > 0 ? availShow/total : 1;
+      cls = pct < 0.2 ? 'low' : (availShow > 0 ? 'ok' : '');
+      mainVal  = hoursToDisplay(availShow);
+      mainUnit = '可用';
+      detail   = `配額 ${hoursToDisplay(total)}　已用 ${hoursToDisplay(used)}${adjust!==0?`　調整 ${adjust>0?'+':''}${hoursToDisplay(Math.abs(adjust))}`:''}`;
+      // avail 用 availShow 保持一致
+      // avail = availShow; // already clamped above
+    } else {
+      // 其他假別：只顯示已請時數
+      cls = used > 0 ? '' : 'ok';
+      mainVal  = hoursToDisplay(used);
+      mainUnit = '已請';
+      detail   = used > 0 ? `共請 ${hoursToDisplay(used)}` : '尚未請假';
+    }
+
     const c = document.createElement('div');
     c.className = `bal-card ${cls}`;
     c.innerHTML = `
       <div class="bal-type">${b.leave_type}</div>
-      <div class="bal-val">${avail}</div>
-      <div class="bal-unit">小時 可用</div>
-      <div class="bal-detail">配額 ${b.total_hours}h　已用 ${b.used_hours}h${b.adjust_hours!=0?`　調整 ${b.adjust_hours>0?'+':''}${b.adjust_hours}h`:''}</div>
+      <div class="bal-val" style="font-size:${mainVal.length>6?'18px':'26px'}">${mainVal}</div>
+      <div class="bal-unit">${mainUnit}</div>
+      <div class="bal-detail">${detail}</div>
     `;
     el.appendChild(c);
   });
@@ -1520,42 +2016,88 @@ function initMgrPane() {
   const now = new Date();
   $('mgr_month').value = `${now.getFullYear()}-${pad2(now.getMonth()+1)}`;
 
-  // 員工篩選
-  const sel = $('mgr_empId');
-  EMP_LIST.forEach(e => {
-    const opt=document.createElement('option');
-    opt.value=e.emp_id; opt.textContent=`${e.name}（${e.dept}）`;
-    sel.appendChild(opt);
-  });
-
-  $('mgr_load').onclick = loadMgrLeaves;
-  $('mgr_export').onclick = exportExcel;
+  // 員工篩選選單
+  fillMgrEmpSelect();
 
   loadMgrLeaves();
   loadAllBalances();
 }
 
+function fillMgrEmpSelect() {
+  const sel = $('mgr_empId');
+  sel.innerHTML = '<option value="">全部人員</option>';
+  EMP_LIST.forEach(e => {
+    if (e.status === 'inactive') return;
+    // supervisor 只能看自己部門的員工
+    if (!hasRole('manager') && e.dept !== SESSION.dept) return;
+    const opt = document.createElement('option');
+    opt.value = e.emp_id;
+    opt.textContent = `${e.name}（${e.dept}）`;
+    sel.appendChild(opt);
+  });
+}
+
 async function loadMgrLeaves() {
-  $('mgr_tbody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted)">載入中...</td></tr>';
-  const params = { action:'getLeaves', month:$('mgr_month').value };
-  if ($('mgr_empId').value) params.emp_id = $('mgr_empId').value;
-  const res = await api(params);
   const tbody = $('mgr_tbody');
-  tbody.innerHTML = '';
-  if (!res.success || !res.data.length) { $('mgr_empty').style.display=''; return; }
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted)">載入中...</td></tr>';
   $('mgr_empty').style.display = 'none';
+
+  const month      = $('mgr_month').value;
+  const empId      = $('mgr_empId').value;
   const typeFilter = $('mgr_type').value;
-  res.data
-    .filter(r => !typeFilter || r.leave_type===typeFilter)
-    .forEach(r => {
-      const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${r.name}</td><td>${r.dept}</td>
-        <td><span class="tag ${LEAVE_TYPE_COLORS[r.leave_type]||'tag-gray'}">${r.leave_type}</span></td>
-        <td>${r.start_dt}</td><td>${r.end_dt}</td><td>${r.hours}h</td>
-        <td>${r.reason||''}</td>
-        <td><span class="tag ${r.status==='cancelled'?'tag-red':'tag-green'}">${r.status==='cancelled'?'已取消':'有效'}</span></td>`;
-      tbody.appendChild(tr);
-    });
+
+  // 後端查詢（員工和月份）
+  const params = { action:'getLeaves' };
+  if (month) params.month = month;
+  if (empId) params.emp_id = String(empId); // 確保字串
+
+  const res = await api(params);
+  tbody.innerHTML = '';
+
+  if (!res.success) {
+    $('mgr_empty').style.display='';
+    $('mgr_empty').textContent = '查詢失敗：' + res.message;
+    return;
+  }
+
+  // 前端再過濾：假別 + 排除已取消
+  const rows = (res.data || [])
+    .filter(r => r.status !== 'cancelled')
+    .filter(r => !typeFilter || r.leave_type === typeFilter)
+    .filter(r => !empId || String(r.emp_id) === String(empId));
+
+  if (!rows.length) {
+    $('mgr_empty').style.display='';
+    $('mgr_empty').textContent = '查無符合條件的請假記錄';
+    return;
+  }
+
+  // supervisor 只能看自己部門
+  const visibleRows = hasRole('manager')
+    ? rows
+    : rows.filter(r => r.dept === SESSION.dept);
+
+  // admin 才顯示操作欄
+  const showAction = SESSION && SESSION.is_admin;
+  const thAction = document.getElementById('mgr_th_action');
+  if (thAction) thAction.style.display = showAction ? '' : 'none';
+
+  visibleRows.forEach(r => {
+    const tr = document.createElement('tr');
+    const actionCell = showAction
+      ? `<td><button class="btn btn-danger" style="font-size:12px;padding:4px 10px"
+           onclick="mgrCancelLeave('${r.id}','${r.name}','${r.leave_type}','${toLocalDate(r.start_dt)}')">取消</button></td>`
+      : '';
+    tr.innerHTML = `
+      <td>${r.name||''}</td><td>${r.dept||''}</td>
+      <td><span class="tag ${LEAVE_TYPE_COLORS[r.leave_type]||'tag-gray'}">${r.leave_type}</span></td>
+      <td>${toLocalDate(r.start_dt)}</td><td>${toLocalDate(r.end_dt)}</td>
+      <td>${r.hours}h</td>
+      <td>${r.reason||''}</td>
+      <td><span class="tag tag-green">有效</span></td>
+      ${actionCell}`;
+    tbody.appendChild(tr);
+  });
 }
 
 async function loadAllBalances() {
@@ -1563,41 +2105,137 @@ async function loadAllBalances() {
   const res = await api({ action:'getAllBalances' });
   $('mgr_bal_loading').style.display='none';
   if (!res.success) return;
-  const tbody = $('mgr_bal_tbody');
-  tbody.innerHTML = '';
 
-  // 取得員工名稱對應
+  // 依員工分組
   const empMap = {};
-  EMP_LIST.forEach(e => empMap[e.emp_id] = e);
+  EMP_LIST.forEach(e => empMap[String(e.emp_id)] = e);
 
+  const grouped = {};
   res.data.forEach(b => {
-    const emp = empMap[b.emp_id] || {};
-    const tr = document.createElement('tr');
-    const avail = parseFloat(b.available)||0;
-    tr.innerHTML=`<td>${emp.name||b.emp_id}</td><td>${emp.dept||''}</td>
-      <td><span class="tag ${LEAVE_TYPE_COLORS[b.leave_type]||'tag-gray'}">${b.leave_type}</span></td>
-      <td>${b.total_hours}</td><td>${b.used_hours}</td>
-      <td>${b.adjust_hours>0?'+':''}${b.adjust_hours}</td>
-      <td><b style="color:${avail<8?'var(--danger)':'var(--ok)'}">${avail}</b></td>`;
-    tbody.appendChild(tr);
+    const key = String(b.emp_id);
+    if (!grouped[key]) grouped[key] = { emp: empMap[key] || { name: b.emp_id, dept:'' }, items: [] };
+    grouped[key].items.push(b);
+  });
+
+  const container = $('mgr_bal_tree');
+  container.innerHTML = '';
+
+  Object.entries(grouped).forEach(([empId, group]) => {
+    const emp = group.emp;
+    // 停用員工不顯示
+    if (emp.status === 'inactive') return;
+    // 計算特休/補休可用合計
+    const annualAvail = group.items
+      .filter(b => b.leave_type === '特休')
+      .reduce((s,b) => s + (parseFloat(b.available)||0), 0);
+
+    // 員工標題列（可展開）
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--primary);color:#fff;border-radius:8px;margin-bottom:4px;cursor:pointer;user-select:none';
+    header.innerHTML = `
+      <span style="font-size:14px">▼</span>
+      <span style="font-weight:700;flex:1">${emp.name}</span>
+      <span style="opacity:.7;font-size:13px">${emp.dept}</span>
+      <span style="background:rgba(255,255,255,.2);border-radius:20px;padding:2px 10px;font-size:12px">
+        特休可用 ${hoursToDisplay(annualAvail)}
+      </span>
+    `;
+
+    // 員工詳細表格
+    const detail = document.createElement('div');
+    detail.style.cssText = 'margin-bottom:12px;border:1px solid var(--border);border-radius:0 0 8px 8px;overflow:hidden';
+    
+    const table = document.createElement('table');
+    table.style.width = '100%';
+    table.innerHTML = `
+      <thead>
+        <tr style="background:#f1f5f9">
+          <th style="padding:8px 12px;text-align:left;font-size:12px;font-weight:700;color:var(--muted)">假別</th>
+          <th style="padding:8px 12px;text-align:right;font-size:12px;font-weight:700;color:var(--muted)">配額</th>
+          <th style="padding:8px 12px;text-align:right;font-size:12px;font-weight:700;color:var(--muted)">已用</th>
+          <th style="padding:8px 12px;text-align:right;font-size:12px;font-weight:700;color:var(--muted)">調整</th>
+          <th style="padding:8px 12px;text-align:right;font-size:12px;font-weight:700;color:var(--muted)">剩餘</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${group.items.map(b => {
+          const avail  = parseFloat(b.available)||0;
+          const total  = parseFloat(b.total_hours)||0;
+          const used   = parseFloat(b.used_hours)||0;
+          const adjust = parseFloat(b.adjust_hours)||0;
+          const hasQuota = ['特休','補休'].includes(b.leave_type);
+          const availColor = avail < 8 ? 'var(--danger)' : 'var(--ok)';
+          return `<tr style="border-top:1px solid var(--border)">
+            <td style="padding:8px 12px">
+              <span class="tag ${LEAVE_TYPE_COLORS[b.leave_type]||'tag-gray'}">${b.leave_type}</span>
+            </td>
+            <td style="padding:8px 12px;text-align:right;font-size:13px">
+              ${hasQuota ? hoursToDisplay(total) : '—'}
+            </td>
+            <td style="padding:8px 12px;text-align:right;font-size:13px">${hoursToDisplay(used)}</td>
+            <td style="padding:8px 12px;text-align:right;font-size:13px;color:${adjust>0?'var(--ok)':adjust<0?'var(--danger)':'var(--muted)'}">
+              ${adjust!==0?(adjust>0?'+':'')+hoursToDisplay(Math.abs(adjust)):'—'}
+            </td>
+            <td style="padding:8px 12px;text-align:right;font-size:13px;font-weight:700;color:${availColor}">
+              ${hasQuota ? hoursToDisplay(avail) : hoursToDisplay(used)}
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    `;
+    detail.appendChild(table);
+
+    // 展開/收合
+    let expanded = false;
+    detail.style.display = 'none'; // 預設收合
+    header.querySelector('span').textContent = '▶';
+    header.onclick = () => {
+      expanded = !expanded;
+      detail.style.display = expanded ? '' : 'none';
+      header.querySelector('span').textContent = expanded ? '▼' : '▶';
+    };
+
+    const wrap = document.createElement('div');
+    wrap.style.marginBottom = '10px';
+    wrap.appendChild(header);
+    wrap.appendChild(detail);
+    container.appendChild(wrap);
   });
 }
 
 async function exportExcel() {
-  const start = $('mgr_month').value + '-01';
-  const end   = $('mgr_month').value + '-31';
-  const res   = await api({ action:'exportLeaves', start_dt:start, end_dt:end });
+  const month  = $('mgr_month').value;
+  const empId  = $('mgr_empId').value;
+  const params = { action:'exportLeaves' };
+  if (month) { params.start_dt = month+'-01'; params.end_dt = month+'-31'; }
+  else { params.start_dt = '2020-01-01'; params.end_dt = '2099-12-31'; }
+  if (empId) params.emp_id = String(empId);
+
+  const res = await api(params);
   if (!res.success) { alert(res.message); return; }
 
-  // 簡易 CSV 下載
-  const leaves = res.data.leaves || [];
+  const typeFilter = $('mgr_type').value;
+  let leaves = (res.data.leaves || []).filter(r => r.status !== 'cancelled');
+  if (typeFilter) leaves = leaves.filter(r => r.leave_type === typeFilter);
+  if (empId) leaves = leaves.filter(r => String(r.emp_id) === String(empId));
+
   if (!leaves.length) { alert('查無請假資料'); return; }
-  const headers = Object.keys(leaves[0]);
-  const csv = [headers.join(','), ...leaves.map(r=>headers.map(h=>(`"${String(r[h]||'').replace(/"/g,'""')}"`)).join(','))].join('\n');
-  const blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8;' });
+
+  // 整理欄位
+  const exportRows = leaves.map(r => ({
+    姓名: r.name||'', 部門: r.dept||'', 假別: r.leave_type,
+    開始日期: toLocalDate(r.start_dt), 結束日期: toLocalDate(r.end_dt),
+    時數: r.hours+'h', 原因: r.reason||'', 備註: r.note||'',
+  }));
+
+  const headers = Object.keys(exportRows[0]);
+  const csv = [headers.join(','),
+    ...exportRows.map(r=>headers.map(h=>`"${String(r[h]||'').replace(/"/g,'""')}"`).join(','))
+  ].join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `請假記錄_${$('mgr_month').value}.csv`;
+  a.download = `請假記錄_${month||'全部'}.csv`;
   a.click();
 }
 
@@ -1630,20 +2268,9 @@ function refreshAdminSelects() {
 }
 
 function initAdminPane() {
-  // Admin Tab 切換
-  document.querySelectorAll('.admin-tab').forEach(t => {
-    t.onclick = () => {
-      document.querySelectorAll('.admin-tab').forEach(x=>x.classList.remove('active'));
-      document.querySelectorAll('.admin-pane').forEach(x=>x.style.display='none');
-      t.classList.add('active');
-      $('atab_'+t.dataset.atab).style.display = '';
-    };
-  });
-
+  // admin-tab 點擊已在 DOMContentLoaded 綁定
+  // 這裡只負責初始載入員工表格
   loadEmpTable();
-  initBalAdj();
-  loadCfg();
-  initExport();
 }
 
 async function loadEmpTable() {
@@ -1655,6 +2282,8 @@ async function loadEmpTable() {
     $('emp_loading').innerHTML = `<span style="color:var(--danger)">❌ 載入失敗：${res.message}</span>`;
     return;
   }
+  // 同步更新 EMP_LIST，讓編輯/餘額/匯出都能用
+  EMP_LIST = res.data;
   const tbody = $('emp_tbody');
   tbody.innerHTML = '';
   const ROLE_LABELS = { staff:'一般', supervisor:'一線主管', manager:'上層主管', top:'最高主管', admin:'管理員' };
@@ -1678,18 +2307,26 @@ async function loadEmpTable() {
 $('emp_addBtn').onclick = () => openEditEmp(null);
 
 let _editEmpId = null;
-function openEditEmp(empId) {
+async function openEditEmp(empId) {
   _editEmpId = empId;
   $('modal_emp_title').textContent = empId ? '編輯員工' : '新增員工';
   $('modal_emp_err').textContent = '';
+  // 若 EMP_LIST 是空的，先從後端取
+  if (empId && EMP_LIST.length === 0) {
+    const r = await api({ action:'getEmployees' });
+    if (r.success) EMP_LIST = r.data;
+  }
   if (empId) {
-    const e = EMP_LIST.find(x=>x.emp_id==empId)||{};
+    // emp_id 可能是數字或字串，統一轉字串比對
+    const e = EMP_LIST.find(x=>String(x.emp_id)===String(empId));
+    if (!e) { $('modal_emp_err').textContent = '找不到員工資料，請重新整理後再試'; return; }
     $('me_empId').value=e.emp_id||''; $('me_empId').readOnly=true;
     $('me_name').value=e.name||''; $('me_dept').value=e.dept||'';
     // 職級和 admin 分開
-    const roleVal = ['staff','supervisor','manager','top'].includes(e.role) ? e.role : 'staff';
+    const isAdmin = (String(e.role) === 'admin');
+    const roleVal = isAdmin ? 'staff' : (['staff','supervisor','manager','top'].includes(e.role) ? e.role : 'staff');
     $('me_role').value = roleVal;
-    $('me_isAdmin').checked = (e.role==='admin' || e.is_admin===true || e.is_admin==='true');
+    $('me_isAdmin').checked = isAdmin;
     $('me_email').value=e.email||'';
     $('me_hireDate').value=String(e.hire_date||'').slice(0,10);  // 一-3,6: 只顯示年月日
     $('me_supervisor').value=e.supervisor_id||'';
@@ -1720,11 +2357,20 @@ $('modal_emp_ok').onclick = async () => {
     annual_leave_cycle: $('me_cycle').value,
     notify_emails: $('me_notify_emails').value.trim(),
   };
+  $('modal_emp_ok').disabled = true;
+  $('modal_emp_ok').textContent = '儲存中...';
   const res = await api(params);
-  if (!res.success) { $('modal_emp_err').textContent = res.message; return; }
+  $('modal_emp_ok').disabled = false;
+  $('modal_emp_ok').textContent = '儲存';
+  if (!res.success) { 
+    $('modal_emp_err').textContent = '❌ ' + res.message; 
+    return; 
+  }
   $('modal_emp').classList.remove('open');
   await loadEmpList();
   loadEmpTable();
+  // 顯示成功訊息
+  alert('✅ ' + (res.data?.message || '已儲存'));
 };
 
 let _pwdEmpId = null;
@@ -1754,11 +2400,18 @@ async function toggleEmpStatus(empId, newStatus, btn) {
 
 // 餘額調整
 function initBalAdj() {
-  const sel = $('adj_emp');
-  EMP_LIST.forEach(e => {
-    const opt=document.createElement('option');
-    opt.value=e.emp_id; opt.textContent=`${e.name}（${e.dept}）`;
-    sel.appendChild(opt);
+  // 填充所有員工選單
+  ['adj_emp','grant_emp','bal2_emp'].forEach(selId => {
+    const sel = $(selId);
+    if (!sel) return;
+    const isRequired = selId === 'adj_emp';
+    sel.innerHTML = isRequired ? '<option value="">— 請選擇 —</option>' : '<option value="">全部員工</option>';
+    EMP_LIST.forEach(e => {
+      const opt = document.createElement('option');
+      opt.value = e.emp_id;
+      opt.textContent = `${e.name}（${e.dept}）`;
+      sel.appendChild(opt);
+    });
   });
   $('adj_submit').onclick = async () => {
     const res = await api({
@@ -1811,7 +2464,7 @@ async function loadCfg() {
 
 $('cfg_save').onclick = async () => {
   const params = { action:'saveConfig' };
-  ['work_start','work_end','lunch_start','lunch_end','dinner_start','dinner_end','min_leave_unit','min_ot_unit','annual_leave_cycle','ot_to_comp_ratio']
+  ['hr_email','top_email','work_start','work_end','lunch_start','lunch_end','dinner_start','dinner_end','min_leave_unit','min_ot_unit','annual_leave_cycle','ot_to_comp_ratio']
     .forEach(k => { const el=$(`cfg_${k}`); if(el) params[k]=el.value; });
   const res = await api(params);
   showStatus('cfg_status', res.success ? '✅ '+res.data.message : res.message, res.success?'ok':'err');
@@ -1820,6 +2473,7 @@ $('cfg_save').onclick = async () => {
 // 匯出
 function initExport() {
   const deptSel = $('exp_dept');
+  deptSel.innerHTML = '<option value="">全部部門</option>';
   const depts = [...new Set(EMP_LIST.map(e=>e.dept))];
   depts.forEach(d => { const o=document.createElement('option'); o.value=d; o.textContent=d; deptSel.appendChild(o); });
 
@@ -1845,6 +2499,441 @@ async function doExport(type) {
   a.download=`${type==='leaves'?'請假':'加班'}記錄_${$('exp_start').value}_${$('exp_end').value}.csv`;
   a.click();
   showStatus('exp_status','✅ 已下載 CSV 檔案','ok');
+}
+
+// ════ 可編輯預覽寄信 Modal ════
+let _mailContext = ''; // 'leave' or 'ot'
+
+function addMailRecipient(field) {
+  const sel = document.getElementById('mail_emp_sel');
+  const empId = sel.value;
+  if (!empId) return;
+  const emp = EMP_LIST.find(e=>String(e.emp_id)===String(empId));
+  if (!emp || !emp.email) { alert(`${emp?.name||'此員工'} 尚未設定 Email`); return; }
+  const target = document.getElementById(field==='to'?'mail_to':'mail_cc');
+  const cur = target.value.trim();
+  const emails = cur ? cur.split(',').map(e=>e.trim()).filter(e=>e) : [];
+  if (!emails.includes(emp.email)) {
+    emails.push(emp.email);
+    target.value = emails.join(', ');
+  }
+  sel.value = '';
+}
+
+function openMailModal(m, context) {
+  if (!m) return;
+  _mailContext = context; // 'leave', 'ot', 'cancel'
+  // 清除請假/加班表單的狀態訊息
+  const lvStatus = document.getElementById('lv_status');
+  const otStatus = document.getElementById('ot_status');
+  if (lvStatus) lvStatus.style.display = 'none';
+  if (otStatus) otStatus.style.display = 'none';
+  $('modal_mail_title').textContent = context === 'leave' ? '📧 請假申請 — 預覽與寄出' : '📧 加班申請 — 預覽與寄出';
+  $('mail_subject').value = m.subject || '';
+  $('mail_to').value      = m.toEmails || '';
+  $('mail_cc').value      = m.ccEmails || '';
+  $('mail_body').value    = m.body || '';
+  $('modal_mail_status').innerHTML = '';
+  // 填充員工選擇器（若 EMP_LIST 為空先載入）
+  const fillEmpSel = () => {
+    const empSel = document.getElementById('mail_emp_sel');
+    if (!empSel) return;
+    empSel.innerHTML = '<option value="">選擇員工...</option>';
+    const list = EMP_LIST.length ? EMP_LIST : (SESSION ? [SESSION] : []);
+    list.filter(e=>e.status!=='inactive' && e.email).forEach(e=>{
+      const opt = document.createElement('option');
+      opt.value = e.emp_id;
+      opt.textContent = `${e.name}（${e.dept||''}）— ${e.email}`;
+      empSel.appendChild(opt);
+    });
+  };
+  // 嘗試取得員工清單（所有角色都試試）
+  if (EMP_LIST.length === 0) {
+    api({action:'getEmployees'}).then(r=>{
+      if(r.success && r.data.length) EMP_LIST=r.data;
+      fillEmpSel();
+    });
+  } else { fillEmpSel(); }
+  $('modal_mail').classList.add('open');
+}
+
+function sendViaOutlook() {
+  const to      = $('mail_to').value.trim();
+  const cc      = $('mail_cc').value.trim();
+  const subject = $('mail_subject').value.trim();
+  const body    = $('mail_body').value;
+  if (!to) { showStatus('modal_mail_status','請填寫收件人','err'); return; }
+  let href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  if (cc) href += `&cc=${encodeURIComponent(cc)}`;
+  location.href = href;
+  // 同步儲存（取消通知不重複儲存）
+  if (_mailContext === 'leave') sendLeave(false);
+  else if (_mailContext === 'ot') sendOT(false);
+  // 'cancel' 不需要儲存
+  $('modal_mail').classList.remove('open');
+}
+
+async function sendViaGmail() {
+  const to      = $('mail_to').value.trim();
+  const cc      = $('mail_cc').value.trim();
+  const subject = $('mail_subject').value.trim();
+  const body    = $('mail_body').value;
+  if (!to) { showStatus('modal_mail_status','請填寫收件人','err'); return; }
+
+  $('modal_mail_gmail').disabled = true;
+  $('modal_mail_gmail').textContent = '寄送中...';
+  showStatus('modal_mail_status','寄送中...','warn');
+
+  // 先儲存記錄（取消通知不重複儲存）
+  let saveOk = false;
+  if (_mailContext === 'cancel') {
+    saveOk = true; // 已在取消時處理過
+  } else if (_mailContext === 'leave') {
+    const hours = getLeaveHours();
+    if (hours > 0) {
+      const res = await api({
+        action:'submitLeave',
+        leave_type: $('lv_type').value,
+        start_dt:   $('lv_startDate').value,
+        end_dt:     $('lv_endDate').value,
+        hours:      String(hours),
+        period:     $('lv_period').value,
+        reason:     $('lv_reason').value === '__custom' ? $('lv_reasonCustom').value : $('lv_reason').value,
+        note:       $('lv_note').value,
+        send_gmail: 'false',
+      });
+      saveOk = res.success;
+    }
+  } else if (_mailContext === 'ot') {
+    const workers = collectOTWorkers();
+    if (workers.length) {
+      const res = await api({
+        action:'submitOT',
+        ot_date:    $('ot_date').value,
+        start_time: workers[0].start,
+        end_time:   workers[0].end,
+        hours:      String(workers[0].hours),
+        period_type: workers[0]?.cat || '平日',
+        reason:     workers[0].reason,
+        note:       $('ot_note').value,
+        send_gmail: 'false',
+        workers:    JSON.stringify(workers.map(w=>({emp_id:w.emp_id,name:w.name,dept:w.dept,cat:w.cat}))),
+      });
+      saveOk = res.success;
+    }
+  }
+
+  // 用 Apps Script GmailApp 寄信
+  const res = await api({
+    action:   'sendCustomEmail',
+    to:       to,
+    cc:       cc,
+    subject:  subject,
+    body:     body,
+  });
+
+  $('modal_mail_gmail').disabled = false;
+  $('modal_mail_gmail').textContent = '📧 Gmail 寄出';
+
+  if (res.success) {
+    showStatus('modal_mail_status','✅ 已寄出並儲存記錄！','ok');
+    setTimeout(() => {
+      $('modal_mail').classList.remove('open');
+      // 清除表單狀態
+      const lvStatus = document.getElementById('lv_status');
+      const otStatus = document.getElementById('ot_status');
+      if (lvStatus) lvStatus.style.display = 'none';
+      if (otStatus) otStatus.style.display = 'none';
+      loadBalance('lv_balSummary', true);
+      drawLeaveCalendar(_calDate);
+    }, 1500);
+  } else {
+    showStatus('modal_mail_status','❌ 寄信失敗：'+res.message+
+      '<br><small>提示：請到 Apps Script → 重新部署 → 新版本，部署時點選「審查權限」重新授權 Gmail。</small>','err');
+  }
+}
+
+$('modal_mail_cancel').onclick = () => $('modal_mail').classList.remove('open');
+
+// ════ 手機底部 Tab Bar ════
+function switchMobileTab(tabName, btn) {
+  // 同步桌面 tab-btn 點擊
+  const desktopBtn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+  if (desktopBtn) {
+    desktopBtn.click();
+  }
+  // 更新手機 tab 高亮
+  document.querySelectorAll('.mobile-tab-bar .mtab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
+// 同步手機 tab 高亮（桌面 tab 點擊時）
+function syncMobileTab(tabName) {
+  document.querySelectorAll('.mobile-tab-bar .mtab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === tabName);
+  });
+}
+
+// ════ 主管總覽取消（admin only）════
+async function mgrCancelLeave(id, name, type, date) {
+  if (!SESSION?.is_admin) { alert('無權限'); return; }
+  if (!confirm(`確認取消 ${name} 的 ${type}（${date}）？
+取消後將開啟通知寄信視窗。`)) return;
+
+  const res = await api({ action:'cancelLeave', leave_id: id });
+  if (!res.success) { alert('取消失敗：' + res.message); return; }
+
+  loadMgrLeaves();
+
+  const d = res.data?.leaveData;
+  if (d) {
+    const body = [
+      '【取消通知】請假申請已由管理員取消',
+      '',
+      `員工：${name}`,
+      `假　別：${d.leave_type}`,
+      `日　期：${d.start_dt}${d.start_dt!==d.end_dt?' ～ '+d.end_dt:''}`,
+      `時　數：${d.hours} 小時`,
+      `取消人：${SESSION.name}（管理員）`,
+      '',
+      '（本信由請假系統產生）'
+    ].join('\n');
+
+    // 查員工資料取收件人
+    const targetEmp = EMP_LIST.find(e=>String(e.emp_id)===String(d.emp_id))||{};
+    const supEmp = EMP_LIST.find(e=>String(e.emp_id)===String(targetEmp.supervisor_id));
+    const toEmails = [targetEmp.email, supEmp?.email].filter(e=>e).join(',');
+    const ccEmails = [CFG.hr_email].filter(e=>e).join(',');
+
+    openMailModal({
+      subject: `【取消通知】${name} ${d.leave_type} ${d.start_dt} 已取消`,
+      toEmails, ccEmails, toTxt: name, ccTxt: '人資',
+      body
+    }, 'cancel');
+  }
+}
+
+// ════ 特休計算 & 進位制 ════
+async function doManualGrant() {
+  const btn = document.getElementById('grant_btn');
+  btn.disabled = true;
+  showStatus('grant_status','計算中...','warn');
+  const res = await api({
+    action: 'manualGrantLeave',
+    year: document.getElementById('grant_year').value,
+    target_emp_id: document.getElementById('grant_emp').value,
+  });
+  btn.disabled = false;
+  showStatus('grant_status', res.success ? '✅ '+res.data.message : '❌ '+res.message, res.success?'ok':'err');
+}
+
+async function doCarryover() {
+  const fromYear = document.getElementById('carry_year').value;
+  if (!confirm(`確認將 ${fromYear} 年度未用完的特休結轉到 ${parseInt(fromYear)+1} 年？`)) return;
+  showStatus('carry_status','處理中...','warn');
+  const res = await api({ action:'carryoverLeave', from_year: fromYear });
+  showStatus('carry_status', res.success ? '✅ '+res.data.message : '❌ '+res.message, res.success?'ok':'err');
+}
+
+async function loadAllBalances2() {
+  document.getElementById('bal2_loading').style.display = '';
+  const res = await api({
+    action: 'getAllBalances2',
+    emp_id: document.getElementById('bal2_emp').value,
+  });
+  document.getElementById('bal2_loading').style.display = 'none';
+  if (!res.success) return;
+
+  const tbody = document.getElementById('bal2_tbody');
+  tbody.innerHTML = '';
+  res.data.forEach(b => {
+    const avail = parseFloat(b.available)||0;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${b.name||b.emp_id}</td>
+      <td>${b.dept||''}</td>
+      <td><span class="tag ${LEAVE_TYPE_COLORS[b.leave_type]||'tag-gray'}">${b.leave_type}</span></td>
+      <td>${b.year}</td>
+      <td>${b.total_hours}</td>
+      <td>${b.used_hours}</td>
+      <td>${parseFloat(b.adjust_hours)>0?'+':''}${b.adjust_hours}</td>
+      <td><b style="color:${avail<8?'var(--danger)':'var(--ok)'}">${avail}</b></td>
+      <td style="font-size:12px;color:var(--muted)">${hoursToDisplay(avail)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ════ 行事曆管理 ════
+let _parsedHolidays = []; // 暫存解析結果
+
+async function parsePdfCalendar() {
+  const apiKey = document.getElementById('cal_apiKey').value.trim();
+  const fileInput = document.getElementById('cal_pdfFile');
+  const file = fileInput.files[0];
+
+  if (!apiKey) { showStatus('cal_parseStatus','請先輸入 Anthropic API Key','err'); return; }
+  if (!file)   { showStatus('cal_parseStatus','請選擇 PDF 檔案','err'); return; }
+
+  const btn = document.getElementById('cal_parseBtn');
+  btn.disabled = true;
+  btn.textContent = '🤖 解析中...';
+  showStatus('cal_parseStatus','正在讀取 PDF...','warn');
+
+  try {
+    // 讀取 PDF 為 base64
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    showStatus('cal_parseStatus','正在呼叫 Claude AI 解析...','warn');
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-5',
+        max_tokens: 2000,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'document',
+              source: { type: 'base64', media_type: 'application/pdf', data: base64 }
+            },
+            {
+              type: 'text',
+              text: `請分析這份公司年度行事曆 PDF，找出所有放假日和補班日。
+請以 JSON 格式回傳，格式如下，只回傳 JSON 不要其他文字：
+{
+  "year": 2026,
+  "holidays": [
+    {"date": "2026-01-01", "name": "元旦", "type": "holiday"},
+    {"date": "2026-02-17", "name": "春節", "type": "holiday"}
+  ],
+  "workdays": [
+    {"date": "2026-02-22", "name": "補班日", "type": "workday"}
+  ]
+}
+type 只能是 "holiday"（放假）或 "workday"（補班）。
+日期格式為 YYYY-MM-DD。
+放假日包含：國定假日、彈性放假、公司特別假日。
+補班日包含：調整補上班的日期。`
+            }
+          ]
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || 'API 呼叫失敗');
+    }
+
+    const data = await response.json();
+    const text = data.content[0].text.trim();
+
+    // 解析 JSON（去除可能的 markdown）
+    const jsonStr = text.replace(/^```json\n?|^```\n?|\n?```$/g, '').trim();
+    const result = JSON.parse(jsonStr);
+
+    _parsedHolidays = [
+      ...(result.holidays || []),
+      ...(result.workdays || [])
+    ].sort((a,b) => a.date.localeCompare(b.date));
+
+    // 顯示預覽
+    const previewEl = document.getElementById('cal_previewList');
+    previewEl.innerHTML = '';
+    _parsedHolidays.forEach(h => {
+      const div = document.createElement('div');
+      div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px';
+      const color = h.type === 'holiday' ? '#dc2626' : '#d97706';
+      const label = h.type === 'holiday' ? '🎌放假' : '🔧補班';
+      div.innerHTML = `<span style="color:${color};font-weight:700;min-width:60px">${label}</span><span style="min-width:100px">${h.date}</span><span>${h.name}</span>`;
+      previewEl.appendChild(div);
+    });
+
+    document.getElementById('cal_preview').style.display = '';
+    showStatus('cal_parseStatus', `✅ 解析完成！共找到 ${_parsedHolidays.length} 個假日/補班日，請確認後匯入。`, 'ok');
+
+  } catch(e) {
+    showStatus('cal_parseStatus', '❌ 解析失敗：' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🤖 AI 解析';
+  }
+}
+
+function importParsedCalendar() {
+  if (!_parsedHolidays.length) return;
+  
+  // 先清除同年度的舊資料
+  const year = _parsedHolidays[0]?.date?.slice(0,4);
+  if (year) {
+    Object.keys(COMPANY_HOLIDAYS).forEach(d => {
+      if (d.startsWith(year)) delete COMPANY_HOLIDAYS[d];
+    });
+  }
+
+  // 匯入新資料
+  _parsedHolidays.forEach(h => {
+    COMPANY_HOLIDAYS[h.date] = { name: h.name, type: h.type };
+  });
+
+  document.getElementById('cal_preview').style.display = 'none';
+  _parsedHolidays = [];
+  renderCalList();
+  drawLeaveCalendar(_calDate);
+  showStatus('cal_parseStatus', `✅ 已成功匯入 ${year} 年行事曆！`, 'ok');
+}
+function initCalPane() {
+  renderCalList();
+}
+
+function renderCalList() {
+  const el = document.getElementById('cal_list');
+  if (!el) return;
+  el.innerHTML = '';
+  Object.entries(COMPANY_HOLIDAYS).sort().forEach(([date, info]) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px';
+    const typeColor = info.type === 'holiday' ? '#dc2626' : '#d97706';
+    const typeLabel = info.type === 'holiday' ? '放假' : '補班';
+    div.innerHTML = `
+      <span><b style="color:${typeColor}">${typeLabel}</b> ${date} ${info.name}</span>
+      <button onclick="removeCalHoliday('${date}')" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:16px;padding:0 4px">✕</button>
+    `;
+    el.appendChild(div);
+  });
+}
+
+function addCalHoliday() {
+  const date = document.getElementById('cal_newDate').value;
+  const name = document.getElementById('cal_newName').value.trim();
+  const type = document.getElementById('cal_newType').value;
+  if (!date || !name) { showStatus('cal_status','請填寫日期和名稱','err'); return; }
+  COMPANY_HOLIDAYS[date] = { name, type };
+  document.getElementById('cal_newDate').value = '';
+  document.getElementById('cal_newName').value = '';
+  renderCalList();
+  showStatus('cal_status', `✅ 已新增 ${date} ${name}`, 'ok');
+  // 若月曆目前顯示該月，重新繪製
+  drawLeaveCalendar(_calDate);
+}
+
+function removeCalHoliday(date) {
+  if (!confirm(`確認移除 ${date} ${COMPANY_HOLIDAYS[date]?.name}？`)) return;
+  delete COMPANY_HOLIDAYS[date];
+  renderCalList();
+  drawLeaveCalendar(_calDate);
 }
 
 // ════ Modal 關閉點遮罩 ════
