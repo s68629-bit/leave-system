@@ -1321,6 +1321,8 @@ function initLeaveForm() {
 
   $('lv_startDate').value = todayStr();
   $('lv_endDate').value   = todayStr();
+  // 預設日期設好後立即計算時數，避免使用者不動日期就送出時顯示紅字
+  calcLeaveHours();
 
   // 代理人選單（從員工清單）
   loadAgentOptions();
