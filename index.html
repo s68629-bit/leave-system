@@ -913,6 +913,10 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
         <label>其他預設通知人 Email（多組用逗號分隔）</label>
         <input type="text" id="me_notify_emails" placeholder="例：a@tony.com.tw,b@tony.com.tw"/>
       </div>
+      <div class="col-12 fld">
+        <label>跨部門可查看部門 <span style="font-size:11px;color:var(--muted);text-transform:none;letter-spacing:0">（supervisor 專用，多個部門用逗號分隔，如「黃光,電鑄」）</span></label>
+        <input type="text" id="me_extra_depts" placeholder="留空 = 只看自己部門"/>
+      </div>
       <div class="col-6 fld">
         <label>特休週期</label>
         <select id="me_cycle">
@@ -1175,6 +1179,8 @@ async function doLogin() {
     SESSION = res.data;
     // is_admin：role=admin 或後端回傳 is_admin=true
     SESSION.is_admin = (SESSION.role === 'admin' || SESSION.is_admin === true);
+    // extra_depts：跨部門主管額外可查看的部門（逗號分隔字串）
+    SESSION.extra_depts = SESSION.extra_depts || '';
     initApp();
   } catch(e) {
     $('li_err').textContent = e.message || '登入失敗';
@@ -1539,11 +1545,10 @@ async function drawLeaveCalendar(date) {
   // 月曆顯示規則：staff=只看自己；supervisor=同部門；manager/admin=全部
   const leaveParams = { action:'getLeaves', month:monthStr };
   if (!hasRole('supervisor')) {
-    leaveParams.emp_id = SESSION.emp_id;       // 一般員工：只看自己
-  } else if (!hasRole('manager')) {
-    leaveParams.dept = SESSION.dept;           // 一線主管：看同部門
+    leaveParams.emp_id = SESSION.emp_id; // 一般員工：只看自己
   }
-  // manager / admin：不加篩選，後端回傳全部
+  // supervisor / manager / admin：不加 emp_id，後端依 canViewEmployee 控制
+  // （extra_depts 跨部門邏輯已在後端 canViewEmployee 處理）
 
   // 同時載入請假和加班
   const [resLeave, resOT] = await Promise.all([
@@ -1553,17 +1558,17 @@ async function drawLeaveCalendar(date) {
   let evs = resLeave.success ? resLeave.data : [];
   const calOTEvs = resOT.success ? resOT.data : [];
 
-  // 前端依角色過濾（保守版：有 emp_id/dept 才比對，避免欄位名不同被誤刪）
+  // 前端依角色做最終過濾（後端已處理，前端做雙重保險）
   if (!hasRole('supervisor')) {
-    // staff：只看自己（有 emp_id 欄位才過濾）
-    evs = evs.filter(ev =>
-      ev.emp_id === undefined || String(ev.emp_id) === String(SESSION.emp_id)
-    );
+    // staff：只看自己
+    evs = evs.filter(ev => String(ev.emp_id) === String(SESSION.emp_id));
   } else if (!hasRole('manager')) {
-    // supervisor（一線主管）：只看同部門（有 dept 欄位才過濾）
-    evs = evs.filter(ev =>
-      ev.dept === undefined || ev.dept === SESSION.dept
-    );
+    // supervisor：看自己部門 + extra_depts（SESSION.extra_depts 為逗號分隔字串）
+    const allowedDepts = [SESSION.dept];
+    if (SESSION.extra_depts) {
+      String(SESSION.extra_depts).split(',').map(d=>d.trim()).filter(Boolean).forEach(d=>allowedDepts.push(d));
+    }
+    evs = evs.filter(ev => allowedDepts.includes(ev.dept));
   }
   // manager / admin：不過濾，看全部
 
@@ -2099,8 +2104,12 @@ function fillMgrEmpSelect() {
   sel.innerHTML = '<option value="">全部人員</option>';
   EMP_LIST.forEach(e => {
     if (e.status === 'inactive') return;
-    // supervisor 只能看自己部門的員工
-    if (!hasRole('manager') && e.dept !== SESSION.dept) return;
+    // supervisor 只能看自己部門 + extra_depts 的員工
+    if (!hasRole('manager')) {
+      const allowedDepts = [SESSION.dept];
+      if (SESSION.extra_depts) String(SESSION.extra_depts).split(',').map(d=>d.trim()).filter(Boolean).forEach(d=>allowedDepts.push(d));
+      if (!allowedDepts.includes(e.dept)) return;
+    }
     const opt = document.createElement('option');
     opt.value = e.emp_id;
     opt.textContent = `${e.name}（${e.dept}）`;
@@ -2121,7 +2130,8 @@ async function loadMgrLeaves() {
   const params = { action:'getLeaves' };
   if (month) params.month = month;
   if (empId) params.emp_id = String(empId);
-  if (!hasRole('manager')) params.dept = SESSION.dept; // supervisor：傳部門給後端
+  // supervisor：傳部門給後端（後端 getLeaves 支援 dept 篩選）
+  // 注意：extra_depts 跨部門查詢由後端 canViewEmployee 處理，不在此傳多個 dept
 
   const res = await api(params);
   tbody.innerHTML = '';
@@ -2137,7 +2147,12 @@ async function loadMgrLeaves() {
     .filter(r => r.status !== 'cancelled')
     .filter(r => !typeFilter || r.leave_type === typeFilter)
     .filter(r => !empId || String(r.emp_id) === String(empId))
-    .filter(r => hasRole('manager') || !r.dept || r.dept === SESSION.dept);
+    .filter(r => {
+      if (hasRole('manager')) return true;
+      const allowedDepts = [SESSION.dept];
+      if (SESSION.extra_depts) String(SESSION.extra_depts).split(',').map(d=>d.trim()).filter(Boolean).forEach(d=>allowedDepts.push(d));
+      return !r.dept || allowedDepts.includes(r.dept);
+    });
 
   if (!rows.length) {
     $('mgr_empty').style.display='';
@@ -2204,8 +2219,12 @@ async function loadAllBalances() {
     const emp = group.emp;
     // 停用員工不顯示
     if (emp.status === 'inactive') return;
-    // supervisor 只看自己部門；manager/admin 看全部
-    if (!hasRole('manager') && emp.dept && emp.dept !== SESSION.dept) return;
+    // supervisor 只看自己部門 + extra_depts；manager/admin 看全部
+    if (!hasRole('manager')) {
+      const allowedDepts = [SESSION.dept];
+      if (SESSION.extra_depts) String(SESSION.extra_depts).split(',').map(d=>d.trim()).filter(Boolean).forEach(d=>allowedDepts.push(d));
+      if (emp.dept && !allowedDepts.includes(emp.dept)) return;
+    }
     // 計算特休/補休可用合計
     const annualAvail = group.items
       .filter(b => b.leave_type === '特休')
@@ -2467,8 +2486,9 @@ async function openEditEmp(empId) {
     $('me_agent').value=e.agent_id||'';
     $('me_cycle').value=e.annual_leave_cycle||'hire_date';
     $('me_notify_emails').value=e.notify_emails||'';
+    $('me_extra_depts').value=e.extra_depts||'';
   } else {
-    ['me_empId','me_name','me_dept','me_email','me_hireDate','me_supervisor','me_agent','me_notify_emails'].forEach(id=>{ if($(id)) $(id).value=''; });
+    ['me_empId','me_name','me_dept','me_email','me_hireDate','me_supervisor','me_agent','me_notify_emails','me_extra_depts'].forEach(id=>{ if($(id)) $(id).value=''; });
     $('me_empId').readOnly=false; $('me_role').value='staff'; $('me_isAdmin').checked=false; $('me_cycle').value='hire_date';
     fillDeptSelect('');
   }
@@ -2491,6 +2511,7 @@ $('modal_emp_ok').onclick = async () => {
     agent_id: $('me_agent').value.trim(),
     annual_leave_cycle: $('me_cycle').value,
     notify_emails: $('me_notify_emails').value.trim(),
+    extra_depts: $('me_extra_depts').value.trim(),
   };
   $('modal_emp_ok').disabled = true;
   $('modal_emp_ok').textContent = '儲存中...';
