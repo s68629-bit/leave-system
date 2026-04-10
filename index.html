@@ -885,7 +885,11 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
     <div class="grid">
       <div class="col-6 fld"><label>工號</label><input type="text" id="me_empId"/></div>
       <div class="col-6 fld"><label>姓名</label><input type="text" id="me_name"/></div>
-      <div class="col-6 fld"><label>部門</label><input type="text" id="me_dept"/></div>
+      <div class="col-6 fld">
+        <label>部門</label>
+        <select id="me_dept_sel" onchange="onDeptSelChange()" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;outline:none;background:#fff"></select>
+        <input type="text" id="me_dept" placeholder="輸入新部門名稱" style="display:none;margin-top:6px;width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;outline:none"/>
+      </div>
       <div class="col-6 fld">
         <label>職級</label>
         <select id="me_role">
@@ -1546,8 +1550,18 @@ async function drawLeaveCalendar(date) {
     api(leaveParams),
     api({ action:'getOvertimes', month:monthStr, emp_id: SESSION.emp_id })
   ]);
-  const evs = resLeave.success ? resLeave.data : [];
+  let evs = resLeave.success ? resLeave.data : [];
   const calOTEvs = resOT.success ? resOT.data : [];
+
+  // 前端依角色過濾（不依賴後端 dept 參數，確保所有後端版本都正確）
+  if (!hasRole('supervisor')) {
+    // staff：只看自己
+    evs = evs.filter(ev => String(ev.emp_id) === String(SESSION.emp_id));
+  } else if (!hasRole('manager')) {
+    // supervisor（一線主管）：只看同部門
+    evs = evs.filter(ev => ev.dept === SESSION.dept);
+  }
+  // manager / admin：不過濾，看全部
 
   const grid = $('lv_calGrid');
   grid.innerHTML = '';
@@ -2360,6 +2374,58 @@ async function loadEmpTable() {
 
 $('emp_addBtn').onclick = () => openEditEmp(null);
 
+
+// ════ 部門下拉輔助函數 ════
+function fillDeptSelect(currentDept) {
+  const sel = $('me_dept_sel');
+  const inp = $('me_dept');
+  if (!sel) return;
+
+  // 從 EMP_LIST 取不重複的部門
+  const depts = [...new Set(EMP_LIST.map(e => e.dept).filter(Boolean))].sort();
+  sel.innerHTML = '';
+
+  // 加入已知部門
+  depts.forEach(d => {
+    const o = document.createElement('option');
+    o.value = d; o.textContent = d;
+    sel.appendChild(o);
+  });
+
+  // 加「自訂...」選項
+  const custom = document.createElement('option');
+  custom.value = '__custom'; custom.textContent = '＋ 輸入新部門...';
+  sel.appendChild(custom);
+
+  // 設定目前值
+  if (currentDept && depts.includes(currentDept)) {
+    sel.value = currentDept;
+    inp.style.display = 'none';
+    inp.value = '';
+  } else if (currentDept) {
+    // 不在清單裡（手動輸入的新部門）
+    sel.value = '__custom';
+    inp.style.display = '';
+    inp.value = currentDept;
+  } else {
+    sel.value = depts[0] || '__custom';
+    inp.style.display = sel.value === '__custom' ? '' : 'none';
+    inp.value = '';
+  }
+}
+
+function onDeptSelChange() {
+  const sel = $('me_dept_sel');
+  const inp = $('me_dept');
+  if (sel.value === '__custom') {
+    inp.style.display = '';
+    inp.focus();
+  } else {
+    inp.style.display = 'none';
+    inp.value = '';
+  }
+}
+
 let _editEmpId = null;
 async function openEditEmp(empId) {
   _editEmpId = empId;
@@ -2375,7 +2441,7 @@ async function openEditEmp(empId) {
     const e = EMP_LIST.find(x=>String(x.emp_id)===String(empId));
     if (!e) { $('modal_emp_err').textContent = '找不到員工資料，請重新整理後再試'; return; }
     $('me_empId').value=e.emp_id||''; $('me_empId').readOnly=true;
-    $('me_name').value=e.name||''; $('me_dept').value=e.dept||'';
+    $('me_name').value=e.name||''; fillDeptSelect(e.dept||'');
     // 職級和 admin 分開
     const isAdmin = (String(e.role) === 'admin');
     const roleVal = isAdmin ? 'staff' : (['staff','supervisor','manager','top'].includes(e.role) ? e.role : 'staff');
@@ -2388,8 +2454,9 @@ async function openEditEmp(empId) {
     $('me_cycle').value=e.annual_leave_cycle||'hire_date';
     $('me_notify_emails').value=e.notify_emails||'';
   } else {
-    ['me_empId','me_name','me_dept','me_email','me_hireDate','me_supervisor','me_agent','me_notify_emails'].forEach(id=>$(id).value='');
+    ['me_empId','me_name','me_dept','me_email','me_hireDate','me_supervisor','me_agent','me_notify_emails'].forEach(id=>{ if($(id)) $(id).value=''; });
     $('me_empId').readOnly=false; $('me_role').value='staff'; $('me_isAdmin').checked=false; $('me_cycle').value='hire_date';
+    fillDeptSelect('');
   }
   $('modal_emp').classList.add('open');
 }
@@ -2402,7 +2469,7 @@ $('modal_emp_ok').onclick = async () => {
     action: _editEmpId ? 'updateEmployee' : 'addEmployee',
     emp_id: $('me_empId').value.trim(),
     name: $('me_name').value.trim(),
-    dept: $('me_dept').value.trim(),
+    dept: (($('me_dept_sel').value === '__custom') ? $('me_dept').value.trim() : $('me_dept_sel').value).trim(),
     role: roleToSave,
     email: $('me_email').value.trim(),
     hire_date: $('me_hireDate').value,
@@ -2511,7 +2578,17 @@ async function loadCfg() {
     if (m.type==='select') {
       input=`<select id="cfg_${m.key}">${m.options.map(o=>`<option value="${o}" ${CFG[m.key]===o?'selected':''}>${o}</option>`).join('')}</select>`;
     } else {
-      input=`<input type="${m.type}" id="cfg_${m.key}" value="${CFG[m.key]||''}"/>`;
+      const CFG_DEFAULTS = {
+        work_start:'08:30', work_end:'17:30',
+        lunch_start:'12:00', lunch_end:'13:00',
+        dinner_start:'', dinner_end:'',
+        min_leave_unit:'0.5', min_ot_unit:'0.5',
+        ot_to_comp_ratio:'1',
+      };
+      const val = (CFG[m.key] !== undefined && CFG[m.key] !== null && CFG[m.key] !== '')
+        ? CFG[m.key]
+        : (CFG_DEFAULTS[m.key] ?? '');
+      input=`<input type="${m.type}" id="cfg_${m.key}" value="${val}"/>`;
     }
     row.innerHTML=`<div class="cfg-label">${m.label}<div class="cfg-desc">${m.desc}</div></div><div class="cfg-input">${input}</div>`;
     container.appendChild(row);
