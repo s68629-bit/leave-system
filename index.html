@@ -1231,6 +1231,8 @@ function initApp() {
         initAdminPane();
         refreshAdminSelects();
       }
+      // EMP_LIST 載完後，重新整理加班人員下拉（若列已建好但用空清單）
+      refreshOTWorkerSelects();
     });
   }
 
@@ -1627,13 +1629,16 @@ async function loadAgentOptions() {
 }
 
 // ════ 加班表單 ════
-function initOTForm() {
+async function initOTForm() {
+  // 若 EMP_LIST 還是空的（staff 身份），先取得員工清單再新增第一列
+  if (EMP_LIST.length === 0) {
+    try {
+      const res = await api({ action: 'getEmployees' });
+      if (res.success) EMP_LIST = res.data;
+    } catch(e) {}
+  }
   ot_addWorkerRow({ isApplicant: true });
-  $('ot_addWorker').onclick = () => ot_addWorkerRow({});
-  $('ot_btnPreview').onclick  = () => openMailModal(buildOTEmail(), 'ot');
-  $('ot_btnSend').onclick     = () => openMailModal(buildOTEmail(), 'ot');
-  $('ot_btnSaveOnly').onclick = () => sendOT(false);
-  $('ot_btnReset').onclick    = resetOTForm;
+  // 其餘按鈕已在 HTML 用 onclick 直接綁定，不需重複綁定
 }
 
 let _workerCount = 0;
@@ -1654,7 +1659,6 @@ function ot_addWorkerRow(opts={}) {
         <label>加班人</label>
         <select class="ot-worker-sel" style="width:100%">
           ${names}
-          <option value="__other">其他</option>
         </select>
       </div>
       <div class="fld" style="margin:0">
@@ -2690,6 +2694,32 @@ async function sendViaGmail() {
 $('modal_mail_cancel').onclick = () => $('modal_mail').classList.remove('open');
 
 // ════ 加班預設情境 ════
+// 重新整理所有加班人員的下拉選單（EMP_LIST 異步載完後呼叫）
+function refreshOTWorkerSelects() {
+  if (!EMP_LIST.length) return;
+  const newOptions = EMP_LIST.map(e =>
+    `<option value="${e.emp_id}" data-name="${e.name}" data-dept="${e.dept||''}">${e.name}（${e.dept||''}）</option>`
+  ).join('') + `<option value="__other">其他</option>`;
+
+  document.querySelectorAll('#ot_workers .ot-worker-sel').forEach(sel => {
+    const prevVal = sel.value; // 記住目前選中的值
+    sel.innerHTML = newOptions;
+    // 嘗試恢復選中：優先保留，若不在新清單則預設登入者
+    const found = [...sel.options].some(o => o.value === prevVal);
+    if (found) {
+      sel.value = prevVal;
+    } else if (SESSION) {
+      // 找登入者的 option
+      for (const opt of sel.options) {
+        if (String(opt.value) === String(SESSION.emp_id)) {
+          sel.value = opt.value;
+          break;
+        }
+      }
+    }
+  });
+}
+
 function applyOTPreset() {
   const sel = document.getElementById('ot_preset');
   const val = sel.value;
