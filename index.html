@@ -457,8 +457,27 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
             <div id="ot_workers"></div>
           </div>
 
+          <!-- 預設情境快選 -->
           <div class="col-12 fld">
-            <label>備註</label>
+            <label>📋 預設情境快選（選後自動帶入原因與備註）</label>
+            <select id="ot_preset" onchange="applyOTPreset()" style="width:100%">
+              <option value="">— 選擇預設情境（選填）—</option>
+              <option value="進出庫作業|配合貨櫃延遲到達之卸貨與入庫作業">1. 進出庫作業</option>
+              <option value="盤點作業|執行定期（月/季）庫存盤點與帳務核對">2. 盤點作業</option>
+              <option value="急單出貨|因應客戶緊急訂單之打包與裝箱">3. 急單出貨</option>
+              <option value="空間整備|因大批物料進場，進行儲位調度與空間優化">4. 空間整備</option>
+              <option value="機台設備維修|進行廠務設備或生產機台維修">5. 機台設備維修</option>
+              <option value="設備維修保養|利用生產離峰時間，進行例行性設備維修保養">6. 設備維修保養</option>
+              <option value="環境稽查|因應外部稽核（如 ISO、消防檢修）之準備作業">7. 環境稽查</option>
+              <option value="監控值守|配合特殊工程施作，進行現場安全監督與巡檢">8. 監控值守</option>
+              <option value="產線趕工|因應排程需求，補足訂單缺口以維持出貨進度">9. 產線趕工</option>
+              <option value="製程優化|進行新產品試作（Trial Run）或工法改良測試">10. 製程優化</option>
+              <option value="緊急搶修|因應突發狀況，臨時進場廠務或製程設備搶修或檢查">11. 緊急搶修</option>
+            </select>
+          </div>
+
+          <div class="col-12 fld">
+            <label>備註 <span style="font-size:11px;color:var(--muted)">（可手動修改）</span></label>
             <textarea id="ot_note" placeholder="工作內容、工單號等（選填）"></textarea>
           </div>
 
