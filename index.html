@@ -963,39 +963,6 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
 // ════════════════════════════════════════════════════
 const API_URL = 'https://script.google.com/macros/s/AKfycbw2kSC2GbRo1DsbRUiKLZPjY5ymi803ymW0KF0qhgE4gqyp9o8j4prId2ERcFvMsIaAAA/exec';
 
-// ════ 員工預設資料（與 Apps Script setupEmployees() 同步） ════
-// role: staff / supervisor / manager / admin
-// annual_leave_cycle: hire_date / calendar / both
-// 預設密碼 = 工號（全碼）
-const INIT_EMPLOYEES = [
-  // ── 管理層 ──
-  { emp_id:'7003076', name:'葉宇光', dept:'課長',  role:'manager',    email:'benny.yeh@tony.com.tw',        hire_date:'', supervisor_id:'', agent_id:'7003162', annual_leave_cycle:'hire_date' },
-  // ── 廠務 ──
-  { emp_id:'7003162', name:'徐宏昌', dept:'廠務',  role:'supervisor', email:'',                              hire_date:'', supervisor_id:'7003076', agent_id:'7003295', annual_leave_cycle:'hire_date' },
-  // ── 倉庫 ──
-  { emp_id:'7003295', name:'徐嘉隆', dept:'倉庫',  role:'staff',      email:'',                              hire_date:'', supervisor_id:'7003162', agent_id:'', annual_leave_cycle:'hire_date' },
-  // ── 黃光 ──
-  { emp_id:'7003316', name:'蔡億級', dept:'黃光',  role:'staff',      email:'',                              hire_date:'', supervisor_id:'7003162', agent_id:'', annual_leave_cycle:'hire_date' },
-  // ── 電鑄 ──
-  { emp_id:'7003005', name:'李世謙', dept:'電鑄',  role:'supervisor', email:'',                              hire_date:'', supervisor_id:'7003076', agent_id:'7003274', annual_leave_cycle:'hire_date' },
-  { emp_id:'7103329', name:'帕沙瓦', dept:'電鑄',  role:'staff',      email:'',                              hire_date:'', supervisor_id:'7003005', agent_id:'', annual_leave_cycle:'hire_date' },
-  { emp_id:'7003003', name:'林昱如', dept:'電鑄',  role:'staff',      email:'',                              hire_date:'', supervisor_id:'7003005', agent_id:'', annual_leave_cycle:'hire_date' },
-  { emp_id:'7003274', name:'朱康銘', dept:'電鑄',  role:'staff',      email:'',                              hire_date:'', supervisor_id:'7003005', agent_id:'', annual_leave_cycle:'hire_date' },
-  { emp_id:'7003314', name:'黃怡瑄', dept:'電鑄',  role:'staff',      email:'',                              hire_date:'', supervisor_id:'7003005', agent_id:'', annual_leave_cycle:'hire_date' },
-  // ── 環安 ──
-  { emp_id:'7003254', name:'楊喻捷', dept:'環安',  role:'staff',      email:'',                              hire_date:'', supervisor_id:'7003162', agent_id:'', annual_leave_cycle:'hire_date' },
-  // ── R2R ──
-  { emp_id:'7103127', name:'瓦恰拉', dept:'R2R',   role:'staff',      email:'',                              hire_date:'', supervisor_id:'7003005', agent_id:'', annual_leave_cycle:'hire_date' },
-  { emp_id:'7103213', name:'帕努威', dept:'R2R',   role:'staff',      email:'',                              hire_date:'', supervisor_id:'7003005', agent_id:'', annual_leave_cycle:'hire_date' },
-  { emp_id:'7103215', name:'阿南',   dept:'R2R',   role:'staff',      email:'',                              hire_date:'', supervisor_id:'7003005', agent_id:'', annual_leave_cycle:'hire_date' },
-  { emp_id:'7103313', name:'西立財', dept:'R2R',   role:'staff',      email:'',                              hire_date:'', supervisor_id:'7003005', agent_id:'', annual_leave_cycle:'hire_date' },
-  { emp_id:'7103317', name:'彭沙功', dept:'R2R',   role:'staff',      email:'',                              hire_date:'', supervisor_id:'7003005', agent_id:'', annual_leave_cycle:'hire_date' },
-  { emp_id:'7103321', name:'沙哈拉', dept:'R2R',   role:'staff',      email:'',                              hire_date:'', supervisor_id:'7003005', agent_id:'', annual_leave_cycle:'hire_date' },
-  { emp_id:'7103322', name:'阿匹恰', dept:'R2R',   role:'staff',      email:'',                              hire_date:'', supervisor_id:'7003005', agent_id:'', annual_leave_cycle:'hire_date' },
-  { emp_id:'7103323', name:'強倫',   dept:'R2R',   role:'staff',      email:'',                              hire_date:'', supervisor_id:'7003005', agent_id:'', annual_leave_cycle:'hire_date' },
-  { emp_id:'7103325', name:'阿拉瓦', dept:'R2R',   role:'staff',      email:'',                              hire_date:'', supervisor_id:'7003005', agent_id:'', annual_leave_cycle:'hire_date' },
-  { emp_id:'7103326', name:'特沙朋', dept:'R2R',   role:'staff',      email:'',                              hire_date:'', supervisor_id:'7003005', agent_id:'', annual_leave_cycle:'hire_date' },
-];
 
 const LV_TO       = [{name:'葉宇光',email:'benny.yeh@tony.com.tw'},{name:'黃寶蓮',email:'alice0914@tony.com.tw'}];
 const OT_TO       = [{name:'葉宇光',email:'benny.yeh@tony.com.tw'},{name:'黃寶蓮',email:'alice0914@tony.com.tw'}];
@@ -1073,7 +1040,6 @@ document.addEventListener('DOMContentLoaded', () => {
       // 清除加班情境選單，避免帶到下一個使用者
       const otPreset = document.getElementById('ot_preset');
       if (otPreset) otPreset.value = '';
-      window.SESSION_PROFILE = null;
     });
   }
 
@@ -1177,7 +1143,7 @@ function showStatus(elId, msg, type='ok') {
 }
 
 function hasRole(minRole) {
-  const lvl = { staff:1, supervisor:2, manager:3, admin:4 };
+  const lvl = { staff:1, supervisor:2, manager:3, top:3, admin:4 }; // top 與 manager 同等級
   return (lvl[SESSION?.role]||0) >= (lvl[minRole]||99);
 }
 
@@ -1403,10 +1369,7 @@ function initLeaveForm() {
   // 代理人選單（從員工清單）
   loadAgentOptions();
 
-  $('lv_btnPreview').onclick  = () => openLeaveMailModal();
-  $('lv_btnSend').onclick     = () => openLeaveMailModal();
-  $('lv_btnSaveOnly').onclick = () => sendLeave(false);
-  $('lv_btnReset').onclick    = resetLeaveForm;
+  // 按鈕已在 HTML 用 onclick 直接綁定
 
   // 月曆
   drawLeaveCalendar(_calDate);
@@ -1550,8 +1513,7 @@ function buildLeaveEmail() {
   const agentName= agentEmp ? agentEmp.name : (agentId||'無');
 
   // 找直屬主管 email（To）
-  // me 優先從 SESSION_PROFILE 取（完整資料），其次 EMP_LIST，最後 SESSION
-  const me = window.SESSION_PROFILE || EMP_LIST.find(e=>String(e.emp_id)===String(SESSION.emp_id)) || SESSION || {};
+  const me = EMP_LIST.find(e=>String(e.emp_id)===String(SESSION.emp_id)) || SESSION || {};
   const supervisorEmp = EMP_LIST.find(e=>String(e.emp_id)===String(me.supervisor_id));
 
   const periodTxt = { day:'全天', am:'上半天', pm:'下半天', hour:`${$('lv_startTime').value}–${$('lv_endTime').value}` }[period]||'';
