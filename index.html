@@ -320,7 +320,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
             <label>假別</label>
             <select id="lv_type">
               <option value="特休">特休</option>
-              <option value="補休">補休</option>
+              <option value="補休">加班/補休</option>
               <option value="事假">事假</option>
               <option value="病假">病假</option>
               <option value="生理假">生理假</option>
@@ -557,7 +557,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
           </select>
           <select id="mgr_type">
             <option value="">全部假別</option>
-            <option value="特休">特休</option><option value="補休">補休</option>
+            <option value="特休">特休</option><option value="補休">加班/補休</option>
             <option value="事假">事假</option><option value="病假">病假</option>
           </select>
           <button class="btn btn-secondary" id="mgr_load" onclick="loadMgrLeaves()">🔍 查詢</button>
@@ -663,7 +663,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
             <div class="fld">
               <label>假別</label>
               <select id="adj_type" style="width:100%">
-                <option value="特休">特休</option><option value="補休">補休</option>
+                <option value="特休">特休</option><option value="補休">加班/補休</option>
                 <option value="事假">事假</option><option value="病假">病假</option>
                 <option value="生理假">生理假</option><option value="家庭照顧假">家庭照顧假</option>
               </select>
@@ -1103,6 +1103,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 const pad2 = n => String(n).padStart(2,'0');
+// 假別顯示名稱轉換（資料庫存原始名稱，前端顯示時轉換）
+function leaveTypeDisplay(type) {
+  const map = { '補休': '加班/補休' };
+  return map[type] || type;
+}
 // 時數轉「X天X小時」顯示
 function hoursToDisplay(h) {
   const hours = parseFloat(h) || 0;
@@ -1290,7 +1295,7 @@ function initApp() {
   initLeaveForm(); // 內含 loadAgentOptions()，完成後會呼叫 refreshOTWorkerSelects()
   initOTForm();    // 先用空/部份 EMP_LIST 建列，loadAgentOptions 完成後由 refreshOTWorkerSelects 補正
   initMyRecord();
-  loadBalance('lv_balSummary', true); // 請假表單上的快覽
+  // lv_balSummary 快覽由 loadBalance('bal_cards') 一併更新，確保資料一致
   loadBalance('bal_cards');
 
   if (hasRole('supervisor')) {
@@ -1515,7 +1520,7 @@ async function sendLeave(sendMail) {
   const res = await api(params);
   if (!res.success) { showStatus('lv_status', res.message, 'err'); return; }
   showStatus('lv_status', '✅ ' + res.data.message + (sendMail?' 通知信已寄出':''), 'ok');
-  loadBalance('lv_balSummary', true);
+  loadBalance('bal_cards'); // 同時更新快覽和餘額頁
   drawLeaveCalendar(_calDate);
 }
 
@@ -2003,8 +2008,7 @@ async function cancelLeave(id, btn) {
   if (!res.success) { alert('取消失敗：' + res.message); return; }
 
   loadMyLeaves();
-  loadBalance('lv_balSummary', true);
-  loadBalance('bal_cards');
+  loadBalance('bal_cards'); // 同時更新快覽和餘額頁
 
   // 取消成功 → 開啟通知 modal
   const d = res.data?.leaveData;
@@ -2099,7 +2103,7 @@ async function cancelOT(id, btn) {
 async function loadBalance(targetId, mini=false) {
   const el = $(targetId);
   if (!el) return;
-  // mini 和完整版都先清空，避免舊用戶資料殘留
+  // 先清空，避免舊用戶資料殘留
   el.innerHTML = '';
   if (!mini) $('bal_loading').style.display='';
 
@@ -2108,40 +2112,57 @@ async function loadBalance(targetId, mini=false) {
     res = await api({ action:'getBalance', year: String(new Date().getFullYear()) });
   } catch(e) {
     if (!mini) { $('bal_loading').style.display='none'; }
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">⚠️ 載入失敗，請重新整理</div>';
     return;
   }
   if (!mini) $('bal_loading').style.display='none';
-  if (!res || !res.success) return;
+  if (!res || !res.success) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">⚠️ 載入失敗，請重新整理</div>';
+    return;
+  }
 
   const year = new Date().getFullYear();
   if (!mini) $('bal_year').textContent = `${year} 年度`;
 
   el.innerHTML = '';
+  // 同時更新請假頁面快覽（確保兩者資料一致）
+  if (!mini) {
+    const summary = $('lv_balSummary');
+    if (summary) {
+      summary.innerHTML = '';
+      renderBalCards(summary, res.data, true);
+    }
+  }
+
   const QUOTA_TYPES = ['特休', '補休'];
   const show = mini
     ? res.data.filter(b => ['特休','補休'].includes(b.leave_type))
     : res.data;
 
-  show.forEach(b => {
+  renderBalCards(el, show, mini);
+}
+
+// 渲染餘額卡片（供 loadBalance 和快覽共用）
+function renderBalCards(container, data, mini=false) {
+  const QUOTA_TYPES = ['特休', '補休'];
+  data.forEach(b => {
     const avail   = parseFloat(b.available) || 0;
     const total   = parseFloat(b.total_hours) || 0;
     const used    = parseFloat(b.used_hours) || 0;
     const adjust  = parseFloat(b.adjust_hours) || 0;
     const hasQuota = QUOTA_TYPES.includes(b.leave_type);
+    // 顯示名稱轉換（補休 → 加班/補休）
+    const displayName = leaveTypeDisplay(b.leave_type);
 
     let cls, mainVal, mainUnit, detail;
     if (hasQuota) {
-      // 特休/補休：顯示可用配額（最小為 0）
       const availShow = Math.max(0, avail);
       const pct = total > 0 ? availShow/total : 1;
       cls = pct < 0.2 ? 'low' : (availShow > 0 ? 'ok' : '');
       mainVal  = hoursToDisplay(availShow);
       mainUnit = '可用';
       detail   = `配額 ${hoursToDisplay(total)}　已用 ${hoursToDisplay(used)}${adjust!==0?`　調整 ${adjust>0?'+':''}${hoursToDisplay(Math.abs(adjust))}`:''}`;
-      // avail 用 availShow 保持一致
-      // avail = availShow; // already clamped above
     } else {
-      // 其他假別：只顯示已請時數
       cls = used > 0 ? '' : 'ok';
       mainVal  = hoursToDisplay(used);
       mainUnit = '已請';
@@ -2151,12 +2172,12 @@ async function loadBalance(targetId, mini=false) {
     const c = document.createElement('div');
     c.className = `bal-card ${cls}`;
     c.innerHTML = `
-      <div class="bal-type">${b.leave_type}</div>
+      <div class="bal-type">${displayName}</div>
       <div class="bal-val" style="font-size:${mainVal.length>6?'18px':'26px'}">${mainVal}</div>
       <div class="bal-unit">${mainUnit}</div>
       <div class="bal-detail">${detail}</div>
     `;
-    el.appendChild(c);
+    container.appendChild(c);
   });
 }
 
