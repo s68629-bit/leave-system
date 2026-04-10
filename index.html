@@ -1570,7 +1570,8 @@ async function drawLeaveCalendar(date) {
     if (SESSION.extra_depts) {
       String(SESSION.extra_depts).split(',').map(d=>d.trim()).filter(Boolean).forEach(d=>allowedDepts.push(d));
     }
-    evs = evs.filter(ev => allowedDepts.includes(ev.dept));
+    // dept 為空的記錄也保留（舊資料可能沒有 dept 欄位）
+    evs = evs.filter(ev => !ev.dept || allowedDepts.includes(String(ev.dept)));
   }
   // manager / admin：不過濾，看全部
 
