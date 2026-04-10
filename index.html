@@ -398,7 +398,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
           <div class="col-12">
             <div class="actions">
-              <button class="btn btn-primary" onclick="openMailModal(buildLeaveEmail(),'leave')">✉️ 預覽信件 / 寄出</button>
+              <button class="btn btn-primary" onclick="openLeaveMailModal()">✉️ 預覽信件 / 寄出</button>
               <button class="btn btn-secondary" onclick="sendLeave(false)">☁️ 僅儲存（不寄信）</button>
             </div>
             <div id="lv_status"></div>
@@ -483,7 +483,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
           <div class="col-12">
             <div class="actions">
-              <button class="btn btn-primary" onclick="openMailModal(buildOTEmail(),'ot')">✉️ 預覽信件 / 寄出</button>
+              <button class="btn btn-primary" onclick="openOTMailModal()">✉️ 預覽信件 / 寄出</button>
               <button class="btn btn-secondary" onclick="sendOT(false)">☁️ 僅儲存（不寄信）</button>
             </div>
             <div id="ot_status"></div>
@@ -1315,8 +1315,8 @@ function initLeaveForm() {
   // 代理人選單（從員工清單）
   loadAgentOptions();
 
-  $('lv_btnPreview').onclick  = () => openMailModal(buildLeaveEmail(), 'leave');
-  $('lv_btnSend').onclick     = () => openMailModal(buildLeaveEmail(), 'leave');
+  $('lv_btnPreview').onclick  = () => openLeaveMailModal();
+  $('lv_btnSend').onclick     = () => openLeaveMailModal();
   $('lv_btnSaveOnly').onclick = () => sendLeave(false);
   $('lv_btnReset').onclick    = resetLeaveForm;
 
@@ -1532,9 +1532,18 @@ async function drawLeaveCalendar(date) {
   $('lv_calLabel').textContent = `${y} 年 ${m+1} 月`;
   const monthStr = `${y}-${pad2(m+1)}`;
 
+  // 月曆顯示規則：staff=只看自己；supervisor=同部門；manager/admin=全部
+  const leaveParams = { action:'getLeaves', month:monthStr };
+  if (!hasRole('supervisor')) {
+    leaveParams.emp_id = SESSION.emp_id;       // 一般員工：只看自己
+  } else if (!hasRole('manager')) {
+    leaveParams.dept = SESSION.dept;           // 一線主管：看同部門
+  }
+  // manager / admin：不加篩選，後端回傳全部
+
   // 同時載入請假和加班
   const [resLeave, resOT] = await Promise.all([
-    api({ action:'getLeaves', month:monthStr }),
+    api(leaveParams),
     api({ action:'getOvertimes', month:monthStr, emp_id: SESSION.emp_id })
   ]);
   const evs = resLeave.success ? resLeave.data : [];
@@ -1628,7 +1637,8 @@ async function loadAgentOptions() {
       // 三-1: 預設選代理人
       if (defaultAgent) sel.value = defaultAgent;
 
-      // ★ 代理人選單載好後，OT 加班人下拉也一併刷新（確保用完整 EMP_LIST）
+      // ★ EMP_LIST 填好後：先確保第一列存在，再刷新所有加班人下拉
+      ot_initFirstRow();
       refreshOTWorkerSelects();
     }
   } catch(e) {}
@@ -1636,8 +1646,17 @@ async function loadAgentOptions() {
 
 // ════ 加班表單 ════
 function initOTForm() {
-  // EMP_LIST 可能還在載入中（loadAgentOptions 是非同步）
-  // 先用目前 EMP_LIST 建立第一列；loadAgentOptions 完成後 refreshOTWorkerSelects 會補正
+  // 不在這裡建第一列；由 loadAgentOptions 完成後統一建立，確保 EMP_LIST 已就緒
+  // 若 EMP_LIST 已有資料（supervisor 提前載好），立即建第一列
+  if (EMP_LIST.length > 0) {
+    ot_addWorkerRow({ isApplicant: true });
+  }
+  // EMP_LIST 為空時，等 loadAgentOptions callback 呼叫 ot_initFirstRow()
+}
+
+function ot_initFirstRow() {
+  // 若 #ot_workers 已有列，不重複建
+  if (document.querySelectorAll('#ot_workers .ot-row').length > 0) return;
   ot_addWorkerRow({ isApplicant: true });
 }
 
@@ -2556,6 +2575,31 @@ function addMailRecipient(field) {
     target.value = emails.join(', ');
   }
   sel.value = '';
+}
+
+
+// ════ 預覽信件 async wrapper（確保 EMP_LIST 就緒後再 build）════
+async function ensureEmpList() {
+  if (EMP_LIST.length === 0) {
+    try {
+      const res = await api({ action:'getEmployees' });
+      if (res.success && res.data.length) EMP_LIST = res.data;
+    } catch(e) {}
+  }
+}
+
+async function openLeaveMailModal() {
+  await ensureEmpList();
+  openMailModal(buildLeaveEmail(), 'leave');
+}
+
+async function openOTMailModal() {
+  await ensureEmpList();
+  // 若 #ot_workers 還沒有列，先建
+  if (document.querySelectorAll('#ot_workers .ot-row').length === 0) {
+    ot_addWorkerRow({ isApplicant: true });
+  }
+  openMailModal(buildOTEmail(), 'ot');
 }
 
 function openMailModal(m, context) {
