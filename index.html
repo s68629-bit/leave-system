@@ -1553,13 +1553,17 @@ async function drawLeaveCalendar(date) {
   let evs = resLeave.success ? resLeave.data : [];
   const calOTEvs = resOT.success ? resOT.data : [];
 
-  // 前端依角色過濾（不依賴後端 dept 參數，確保所有後端版本都正確）
+  // 前端依角色過濾（保守版：有 emp_id/dept 才比對，避免欄位名不同被誤刪）
   if (!hasRole('supervisor')) {
-    // staff：只看自己
-    evs = evs.filter(ev => String(ev.emp_id) === String(SESSION.emp_id));
+    // staff：只看自己（有 emp_id 欄位才過濾）
+    evs = evs.filter(ev =>
+      ev.emp_id === undefined || String(ev.emp_id) === String(SESSION.emp_id)
+    );
   } else if (!hasRole('manager')) {
-    // supervisor（一線主管）：只看同部門
-    evs = evs.filter(ev => ev.dept === SESSION.dept);
+    // supervisor（一線主管）：只看同部門（有 dept 欄位才過濾）
+    evs = evs.filter(ev =>
+      ev.dept === undefined || ev.dept === SESSION.dept
+    );
   }
   // manager / admin：不過濾，看全部
 
@@ -1880,8 +1884,7 @@ function initMyRecord() {
   const now = new Date();
   $('rec_month').value   = `${now.getFullYear()}-${pad2(now.getMonth()+1)}`;
   $('otrec_month').value = `${now.getFullYear()}-${pad2(now.getMonth()+1)}`;
-  $('rec_load').onclick   = loadMyLeaves;
-  $('otrec_load').onclick = loadMyOT;
+  // 按鈕已在 HTML 用 onclick 直接綁定，不需在此綁定
   loadMyLeaves();
   loadMyOT();
 }
@@ -2114,10 +2117,11 @@ async function loadMgrLeaves() {
   const empId      = $('mgr_empId').value;
   const typeFilter = $('mgr_type').value;
 
-  // 後端查詢（員工和月份）
+  // 後端查詢（員工和月份）；supervisor 加部門參數
   const params = { action:'getLeaves' };
   if (month) params.month = month;
-  if (empId) params.emp_id = String(empId); // 確保字串
+  if (empId) params.emp_id = String(empId);
+  if (!hasRole('manager')) params.dept = SESSION.dept; // supervisor：傳部門給後端
 
   const res = await api(params);
   tbody.innerHTML = '';
@@ -2128,11 +2132,12 @@ async function loadMgrLeaves() {
     return;
   }
 
-  // 前端再過濾：假別 + 排除已取消
+  // 前端再過濾：假別 + 排除已取消 + supervisor 部門雙保險
   const rows = (res.data || [])
     .filter(r => r.status !== 'cancelled')
     .filter(r => !typeFilter || r.leave_type === typeFilter)
-    .filter(r => !empId || String(r.emp_id) === String(empId));
+    .filter(r => !empId || String(r.emp_id) === String(empId))
+    .filter(r => hasRole('manager') || !r.dept || r.dept === SESSION.dept);
 
   if (!rows.length) {
     $('mgr_empty').style.display='';
@@ -2140,10 +2145,7 @@ async function loadMgrLeaves() {
     return;
   }
 
-  // supervisor 只能看自己部門
-  const visibleRows = hasRole('manager')
-    ? rows
-    : rows.filter(r => r.dept === SESSION.dept);
+  const visibleRows = rows; // 已在上方過濾完畢
 
   // admin 才顯示操作欄
   const showAction = SESSION && SESSION.is_admin;
@@ -2170,9 +2172,20 @@ async function loadMgrLeaves() {
 
 async function loadAllBalances() {
   $('mgr_bal_loading').style.display='';
-  const res = await api({ action:'getAllBalances' });
+  const container = $('mgr_bal_tree');
+  let res;
+  try {
+    res = await api({ action:'getAllBalances' });
+  } catch(e) {
+    $('mgr_bal_loading').style.display='none';
+    container.innerHTML = '<div style="color:var(--muted);padding:12px;font-size:13px">⚠️ 餘額資料載入失敗，請重試</div>';
+    return;
+  }
   $('mgr_bal_loading').style.display='none';
-  if (!res.success) return;
+  if (!res.success) {
+    container.innerHTML = '<div style="color:var(--muted);padding:12px;font-size:13px">⚠️ ' + (res.message||'無法取得餘額資料') + '</div>';
+    return;
+  }
 
   // 依員工分組
   const empMap = {};
@@ -2185,13 +2198,14 @@ async function loadAllBalances() {
     grouped[key].items.push(b);
   });
 
-  const container = $('mgr_bal_tree');
   container.innerHTML = '';
 
   Object.entries(grouped).forEach(([empId, group]) => {
     const emp = group.emp;
     // 停用員工不顯示
     if (emp.status === 'inactive') return;
+    // supervisor 只看自己部門；manager/admin 看全部
+    if (!hasRole('manager') && emp.dept && emp.dept !== SESSION.dept) return;
     // 計算特休/補休可用合計
     const annualAvail = group.items
       .filter(b => b.leave_type === '特休')
@@ -2585,9 +2599,8 @@ async function loadCfg() {
         min_leave_unit:'0.5', min_ot_unit:'0.5',
         ot_to_comp_ratio:'1',
       };
-      const val = (CFG[m.key] !== undefined && CFG[m.key] !== null && CFG[m.key] !== '')
-        ? CFG[m.key]
-        : (CFG_DEFAULTS[m.key] ?? '');
+      // 後端有值用後端值，否則用預設值（空字串也走 fallback）
+      const val = CFG[m.key] || CFG_DEFAULTS[m.key] || '';
       input=`<input type="${m.type}" id="cfg_${m.key}" value="${val}"/>`;
     }
     row.innerHTML=`<div class="cfg-label">${m.label}<div class="cfg-desc">${m.desc}</div></div><div class="cfg-input">${input}</div>`;
