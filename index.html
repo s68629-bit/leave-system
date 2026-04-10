@@ -1241,6 +1241,11 @@ function initApp() {
   if (calTitle && calTitle.innerHTML.includes('部門請假')) {
     calTitle.innerHTML = '<span class="icon">📅</span>本月請假月曆';
   }
+  // 清空餘額快覽（避免上一個登入者的資料殘留）
+  const balSummary = $('lv_balSummary');
+  if (balSummary) balSummary.innerHTML = '';
+  const balCards = $('bal_cards');
+  if (balCards) balCards.innerHTML = '';
 
   // 頂部資訊
   $('tb_name').textContent = SESSION.name;
@@ -2094,7 +2099,9 @@ async function cancelOT(id, btn) {
 async function loadBalance(targetId, mini=false) {
   const el = $(targetId);
   if (!el) return;
-  if (!mini) { $('bal_loading').style.display=''; el.innerHTML=''; }
+  // mini 和完整版都先清空，避免舊用戶資料殘留
+  el.innerHTML = '';
+  if (!mini) $('bal_loading').style.display='';
 
   let res;
   try {
