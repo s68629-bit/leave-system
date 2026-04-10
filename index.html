@@ -1188,7 +1188,9 @@ async function doLogin() {
     // extra_depts：跨部門主管額外可查看的部門（逗號分隔字串）
     SESSION.extra_depts = SESSION.extra_depts || '';
     // view_only_calendar：純月曆檢視模式
-    SESSION.view_only_calendar = (SESSION.view_only_calendar === 'true' || SESSION.view_only_calendar === true);
+    // view_only_calendar：嚴格判斷，只有明確設為 'true' 才觸發（空字串/undefined/FALSE 均不觸發）
+    const _voc = SESSION.view_only_calendar;
+    SESSION.view_only_calendar = (_voc === 'true' || _voc === true || String(_voc).toLowerCase() === 'true') && _voc !== '' && _voc !== false && _voc !== 'false' && _voc !== 'FALSE';
     initApp();
   } catch(e) {
     $('li_err').textContent = e.message || '登入失敗';
