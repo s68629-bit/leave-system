@@ -1230,6 +1230,18 @@ function initApp() {
   $('loginScreen').style.display = 'none';
   $('appScreen').style.display = 'block';
 
+  // ── 還原所有可能被 initCalendarOnlyMode 修改的 DOM（登出後重登時確保乾淨）──
+  const tabsBar = document.querySelector('.tabs-bar');
+  if (tabsBar) tabsBar.style.display = '';
+  // 還原請假申請表單 card（月曆模式可能隱藏了第一個 card）
+  const leaveCards = document.querySelectorAll('#pane_leave .card');
+  leaveCards.forEach(card => { card.style.display = ''; });
+  // 還原月曆標題
+  const calTitle = document.querySelector('#pane_leave .card:last-child .card-title');
+  if (calTitle && calTitle.innerHTML.includes('部門請假')) {
+    calTitle.innerHTML = '<span class="icon">📅</span>本月請假月曆';
+  }
+
   // 頂部資訊
   $('tb_name').textContent = SESSION.name;
   $('tb_dept').textContent = SESSION.dept;
