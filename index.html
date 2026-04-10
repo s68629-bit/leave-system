@@ -1042,6 +1042,9 @@ const $ = id => document.getElementById(id);
 
 // 登出（頂層綁定，確保任何時候都能用）
 document.addEventListener('DOMContentLoaded', () => {
+  // 頁面載入時立即預熱 GAS，減少冷啟動等待
+  setTimeout(() => { fetch(API_URL + '?action=healthCheck').catch(()=>{}); }, 500);
+
   // 登出
   const logoutBtn = document.getElementById('tb_logout');
   if (logoutBtn) {
@@ -1140,22 +1143,28 @@ const LEAVE_TYPE_COLORS = {
 };
 
 // ════ API 通訊層（純 fetch，用於 GitHub Pages）════
-async function api(params) {
+async function api(params, retries=3) {
   if (SESSION && SESSION.token && !params.token) params.token = SESSION.token;
   const qs = new URLSearchParams(
     Object.fromEntries(Object.entries(params).map(([k,v])=>[k,String(v??'')]))
   ).toString();
-  try {
-    const r = await fetch(API_URL + '?' + qs);
-    const text = await r.text();
-    if (text.trimStart().startsWith('<')) {
-      console.error('Got HTML response');
-      return { success: false, message: '伺服器回傳錯誤，請確認 Apps Script 部署設定' };
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const r = await fetch(API_URL + '?' + qs);
+      const text = await r.text();
+      if (text.trimStart().startsWith('<')) {
+        console.error('Got HTML response');
+        return { success: false, message: '伺服器回傳錯誤，請確認 Apps Script 部署設定' };
+      }
+      return JSON.parse(text);
+    } catch(e) {
+      console.error(`API error (attempt ${attempt}/${retries}):`, e.message);
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, 2000 * attempt)); // 2s, 4s 遞增等待
+      } else {
+        return { success: false, message: e.message };
+      }
     }
-    return JSON.parse(text);
-  } catch(e) {
-    console.error('API error:', e.message);
-    return { success: false, message: e.message };
   }
 }
 
@@ -1183,6 +1192,10 @@ async function doLogin() {
   $('li_err').textContent = '';
   if (!empId || !pwd) { $('li_err').textContent = '請輸入工號與密碼'; return; }
   $('li_btn').disabled = true;
+  $('li_btn').textContent = '連線中...';
+  // ★ 先 healthCheck 預熱 GAS（避免冷啟動導致後續 API 失敗）
+  api({ action:'healthCheck' }).catch(()=>{}); // 不等待，背景預熱
+  await new Promise(r => setTimeout(r, 800));  // 給 GAS 0.8 秒暖機
   $('li_btn').textContent = '登入中...';
   try {
     const res = await api({ action:'login', emp_id:empId, password:pwd });
