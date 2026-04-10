@@ -1143,7 +1143,7 @@ const LEAVE_TYPE_COLORS = {
 };
 
 // ════ API 通訊層（純 fetch，用於 GitHub Pages）════
-async function api(params, retries=3) {
+async function api(params, retries=5) {
   if (SESSION && SESSION.token && !params.token) params.token = SESSION.token;
   const qs = new URLSearchParams(
     Object.fromEntries(Object.entries(params).map(([k,v])=>[k,String(v??'')]))
@@ -1160,7 +1160,7 @@ async function api(params, retries=3) {
     } catch(e) {
       console.error(`API error (attempt ${attempt}/${retries}):`, e.message);
       if (attempt < retries) {
-        await new Promise(r => setTimeout(r, 2000 * attempt)); // 2s, 4s 遞增等待
+        await new Promise(r => setTimeout(r, 500)); // 每次等 500ms，5次共2.5秒內完成
       } else {
         return { success: false, message: e.message };
       }
@@ -1194,8 +1194,7 @@ async function doLogin() {
   $('li_btn').disabled = true;
   $('li_btn').textContent = '連線中...';
   // ★ 先 healthCheck 預熱 GAS（避免冷啟動導致後續 API 失敗）
-  api({ action:'healthCheck' }).catch(()=>{}); // 不等待，背景預熱
-  await new Promise(r => setTimeout(r, 800));  // 給 GAS 0.8 秒暖機
+  try { await api({ action:'healthCheck' }); } catch(e) {} // 等 healthCheck 完成再登入
   $('li_btn').textContent = '登入中...';
   try {
     const res = await api({ action:'login', emp_id:empId, password:pwd });
@@ -1639,8 +1638,12 @@ async function drawLeaveCalendar(date) {
 
   // 前端依角色做最終過濾（後端已處理，前端做雙重保險）
   if (!hasRole('supervisor')) {
-    // staff：只看自己
-    evs = evs.filter(ev => String(ev.emp_id) === String(SESSION.emp_id));
+    // staff：嚴格白名單，只要 emp_id 不是自己就一律過濾
+    const myId = String(SESSION.emp_id);
+    evs = evs.filter(ev => {
+      const evId = String(ev.emp_id ?? '');
+      return evId === myId; // 空字串、undefined、其他人 → 全部過濾掉
+    });
   } else if (!hasRole('manager')) {
     // supervisor：看自己部門 + extra_depts（SESSION.extra_depts 為逗號分隔字串）
     const allowedDepts = [SESSION.dept];
@@ -2126,14 +2129,10 @@ async function loadBalance(targetId, mini=false) {
     res = await api({ action:'getBalance', year: String(new Date().getFullYear()) });
   } catch(e) {
     if (!mini && balLoading) { balLoading.style.display='none'; }
-    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">⚠️ 載入失敗，請重新整理</div>';
-    return;
+    return; // 靜默失敗，api 函數本身已重試5次
   }
   if (!mini && balLoading) balLoading.style.display='none';
-  if (!res || !res.success) {
-    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">⚠️ 載入失敗，請重新整理</div>';
-    return;
-  }
+  if (!res || !res.success) return; // 靜默失敗
 
   const year = new Date().getFullYear();
   const balYear = $('bal_year');
