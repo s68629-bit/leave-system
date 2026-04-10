@@ -690,7 +690,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
           <div class="card-title"><span class="icon">⚙️</span>系統規則設定</div>
           <div id="cfg_rows"></div>
           <div class="actions" style="margin-top:14px">
-            <button class="btn btn-primary" id="cfg_save">💾 儲存設定</button>
+            <button class="btn btn-primary" onclick="saveCfg()">💾 儲存設定</button>
           </div>
           <div id="cfg_status"></div>
         </div>
@@ -1437,7 +1437,8 @@ function buildLeaveEmail() {
   const agentName= agentEmp ? agentEmp.name : (agentId||'無');
 
   // 找直屬主管 email（To）
-  const me = EMP_LIST.find(e=>String(e.emp_id)===String(SESSION.emp_id)) || {};
+  // me 優先從 SESSION_PROFILE 取（完整資料），其次 EMP_LIST，最後 SESSION
+  const me = window.SESSION_PROFILE || EMP_LIST.find(e=>String(e.emp_id)===String(SESSION.emp_id)) || SESSION || {};
   const supervisorEmp = EMP_LIST.find(e=>String(e.emp_id)===String(me.supervisor_id));
 
   const periodTxt = { day:'全天', am:'上半天', pm:'下半天', hour:`${$('lv_startTime').value}–${$('lv_endTime').value}` }[period]||'';
@@ -2436,15 +2437,17 @@ async function loadCfg() {
   container.innerHTML = '';
 
   const CFG_META = [
+    { key:'hr_email',    label:'人資 Email', desc:'請假/加班通知固定副件（所有申請都會 Cc）', type:'text' },
+    { key:'top_email',   label:'最高主管 Email', desc:'加班通知固定主要收件人（To）', type:'text' },
     { key:'work_start',  label:'上班時間', desc:'每天正式上班時間', type:'time' },
     { key:'work_end',    label:'下班時間', desc:'每天正式下班時間', type:'time' },
-    { key:'lunch_start', label:'午休開始', desc:'午休開始時間（不計入請假時數）', type:'time' },
+    { key:'lunch_start', label:'午休開始', desc:'午休開始時間（不計入請假/加班時數）', type:'time' },
     { key:'lunch_end',   label:'午休結束', desc:'午休結束時間', type:'time' },
+    { key:'dinner_start', label:'晚餐開始時間', desc:'加班遇此時段自動扣除（留空=不扣）', type:'time' },
+    { key:'dinner_end',   label:'晚餐結束時間', desc:'加班晚餐結束時間', type:'time' },
     { key:'min_leave_unit', label:'最小請假單位（小時）', desc:'例：0.5 代表每次最少請半小時', type:'number' },
     { key:'min_ot_unit',    label:'最小加班單位（小時）', desc:'例：0.5 代表每次最少加半小時', type:'number' },
-    { key:'annual_leave_cycle', label:'特休週期制度', desc:'hire_date=到職日週期　calendar=曆年制(1/1)　both=兩種都支援', type:'select', options:['hire_date','calendar','both'] },
-    { key:'dinner_start', label:'晚餐開始時間', desc:'加班時遇到此時段自動扣除（留空=不扣）', type:'time' },
-    { key:'dinner_end',   label:'晚餐結束時間', desc:'加班晚餐結束時間', type:'time' },
+    { key:'annual_leave_cycle', label:'特休週期制度', desc:'hire_date=到職日週期　calendar=曆年制(1/1)', type:'select', options:['hire_date','calendar','both'] },
     { key:'ot_to_comp_ratio', label:'加班轉補休比例', desc:'1=1小時加班換1小時補休', type:'number' },
   ];
 
@@ -2462,13 +2465,14 @@ async function loadCfg() {
   });
 }
 
-$('cfg_save').onclick = async () => {
+async function saveCfg() {
   const params = { action:'saveConfig' };
   ['hr_email','top_email','work_start','work_end','lunch_start','lunch_end','dinner_start','dinner_end','min_leave_unit','min_ot_unit','annual_leave_cycle','ot_to_comp_ratio']
     .forEach(k => { const el=$(`cfg_${k}`); if(el) params[k]=el.value; });
   const res = await api(params);
-  showStatus('cfg_status', res.success ? '✅ '+res.data.message : res.message, res.success?'ok':'err');
-};
+  if (res.success) CFG = {...CFG, ...params}; // 更新本地 CFG
+  showStatus('cfg_status', res.success ? '✅ 設定已儲存' : '❌ '+res.message, res.success?'ok':'err');
+}
 
 // 匯出
 function initExport() {
@@ -2654,6 +2658,23 @@ async function sendViaGmail() {
 }
 
 $('modal_mail_cancel').onclick = () => $('modal_mail').classList.remove('open');
+
+// ════ 加班預設情境 ════
+function applyOTPreset() {
+  const sel = document.getElementById('ot_preset');
+  const val = sel.value;
+  if (!val) return;
+  const [reason, note] = val.split('|');
+  // 把原因填入所有加班人的原因欄
+  document.querySelectorAll('#ot_workers .ot-reason').forEach(el => {
+    if (!el.value) el.value = reason; // 只填空的
+  });
+  // 備註欄
+  const noteEl = document.getElementById('ot_note');
+  if (noteEl && !noteEl.value) noteEl.value = note;
+  // 重置選單（保持可重複選）
+  setTimeout(() => sel.value = '', 100);
+}
 
 // ════ 手機底部 Tab Bar ════
 function switchMobileTab(tabName, btn) {
