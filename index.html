@@ -917,6 +917,12 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
         <label>跨部門可查看部門 <span style="font-size:11px;color:var(--muted);text-transform:none;letter-spacing:0">（supervisor 專用，多個部門用逗號分隔，如「黃光,電鑄」）</span></label>
         <input type="text" id="me_extra_depts" placeholder="留空 = 只看自己部門"/>
       </div>
+      <div class="col-12" style="margin-top:6px;display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="me_view_only_calendar" style="width:16px;height:16px"/>
+        <label for="me_view_only_calendar" style="font-weight:600;font-size:13px;text-transform:none;letter-spacing:0;color:var(--text)">
+          📅 純月曆檢視模式（登入後只顯示跨部門月曆，不顯示其他功能）
+        </label>
+      </div>
       <div class="col-6 fld">
         <label>特休週期</label>
         <select id="me_cycle">
@@ -1181,6 +1187,8 @@ async function doLogin() {
     SESSION.is_admin = (SESSION.role === 'admin' || SESSION.is_admin === true);
     // extra_depts：跨部門主管額外可查看的部門（逗號分隔字串）
     SESSION.extra_depts = SESSION.extra_depts || '';
+    // view_only_calendar：純月曆檢視模式
+    SESSION.view_only_calendar = (SESSION.view_only_calendar === 'true' || SESSION.view_only_calendar === true);
     initApp();
   } catch(e) {
     $('li_err').textContent = e.message || '登入失敗';
@@ -1188,6 +1196,32 @@ async function doLogin() {
     $('li_btn').disabled = false;
     $('li_btn').textContent = '登 入';
   }
+}
+
+
+// ════ 純月曆檢視模式（view_only_calendar 用戶專用）════
+function initCalendarOnlyMode() {
+  // 隱藏所有 Tab，只留月曆
+  document.querySelector('.tabs-bar').style.display = 'none';
+
+  // 隱藏請假申請表單，只顯示月曆 card
+  const leavePane = $('pane_leave');
+  leavePane.classList.add('active');
+
+  // 隱藏表單 card，只保留月曆 card
+  const cards = leavePane.querySelectorAll('.card');
+  cards.forEach((card, idx) => {
+    if (idx === 0) card.style.display = 'none'; // 請假申請表單
+    // idx === 1 是月曆 card，保留
+  });
+
+  // 月曆標題改為「部門請假/加班月曆」
+  const calTitle = leavePane.querySelector('.card:last-child .card-title');
+  if (calTitle) calTitle.innerHTML = '<span class="icon">📅</span>部門請假 / 加班月曆';
+
+  // 初始化月曆（supervisor 月曆，顯示 extra_depts 部門）
+  _calDate = new Date();
+  drawLeaveCalendar(_calDate);
 }
 
 function initApp() {
@@ -1209,6 +1243,12 @@ function initApp() {
     $('tab_admin').style.display = '';
     const mtabAdmin = document.getElementById('mtab_admin');
     if (mtabAdmin) mtabAdmin.style.display = '';
+  }
+
+  // ── 純月曆檢視模式（view_only_calendar = true）──────────────
+  if (SESSION.view_only_calendar) {
+    initCalendarOnlyMode();
+    return; // 不繼續初始化其他功能
   }
 
   // 填入申請人資訊
@@ -1660,11 +1700,16 @@ async function loadAgentOptions() {
           sel.appendChild(opt);
         }
       });
-      // 三-1: 預設選代理人（確認有對應 option 才設定，否則保持空白）
+      // 三-1: 預設選代理人
       if (defaultAgent) {
         const matched = [...sel.options].some(o => String(o.value) === String(defaultAgent));
-        if (matched) sel.value = String(defaultAgent);
-        // 找不到就保持「（不指定）」
+        if (matched) {
+          sel.value = String(defaultAgent);
+        } else {
+          sel.value = ''; // 找不到對應人員，強制回到「不指定」
+        }
+      } else {
+        sel.value = ''; // 沒有設定代理人，強制回到「不指定」
       }
 
       // ★ EMP_LIST 填好後：先確保第一列存在，再刷新所有加班人下拉
@@ -2494,8 +2539,10 @@ async function openEditEmp(empId) {
     $('me_cycle').value=e.annual_leave_cycle||'hire_date';
     $('me_notify_emails').value=e.notify_emails||'';
     $('me_extra_depts').value=e.extra_depts||'';
+    $('me_view_only_calendar').checked = (e.view_only_calendar === 'true' || e.view_only_calendar === true);
   } else {
     ['me_empId','me_name','me_dept','me_email','me_hireDate','me_supervisor','me_agent','me_notify_emails','me_extra_depts'].forEach(id=>{ if($(id)) $(id).value=''; });
+    $('me_view_only_calendar').checked = false;
     $('me_empId').readOnly=false; $('me_role').value='staff'; $('me_isAdmin').checked=false; $('me_cycle').value='hire_date';
     fillDeptSelect('');
   }
@@ -2519,6 +2566,7 @@ $('modal_emp_ok').onclick = async () => {
     annual_leave_cycle: $('me_cycle').value,
     notify_emails: $('me_notify_emails').value.trim(),
     extra_depts: $('me_extra_depts').value.trim(),
+    view_only_calendar: $('me_view_only_calendar').checked ? 'true' : '',
   };
   $('modal_emp_ok').disabled = true;
   $('modal_emp_ok').textContent = '儲存中...';
