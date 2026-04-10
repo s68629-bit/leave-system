@@ -1659,8 +1659,12 @@ async function loadAgentOptions() {
           sel.appendChild(opt);
         }
       });
-      // 三-1: 預設選代理人
-      if (defaultAgent) sel.value = defaultAgent;
+      // 三-1: 預設選代理人（確認有對應 option 才設定，否則保持空白）
+      if (defaultAgent) {
+        const matched = [...sel.options].some(o => String(o.value) === String(defaultAgent));
+        if (matched) sel.value = String(defaultAgent);
+        // 找不到就保持「（不指定）」
+      }
 
       // ★ EMP_LIST 填好後：先確保第一列存在，再刷新所有加班人下拉
       ot_initFirstRow();
