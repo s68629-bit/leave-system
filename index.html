@@ -1218,8 +1218,8 @@ function initApp() {
   initTabs();
   // 登入後預先載入系統設定（calcOTHours 需要午休/晚餐時段）
   api({ action:'getConfig' }).then(r => { if (r.success) CFG = r.data; });
-  initLeaveForm();
-  initOTForm();
+  initLeaveForm(); // 內含 loadAgentOptions()，完成後會呼叫 refreshOTWorkerSelects()
+  initOTForm();    // 先用空/部份 EMP_LIST 建列，loadAgentOptions 完成後由 refreshOTWorkerSelects 補正
   initMyRecord();
   loadBalance('lv_balSummary', true); // 請假表單上的快覽
   loadBalance('bal_cards');
@@ -1608,6 +1608,9 @@ async function loadAgentOptions() {
   try {
     const res = await api({ action:'getEmployees' });
     if (res.success) {
+      // ★ 所有角色都填入 EMP_LIST（staff 也需要，用於 buildLeaveEmail/buildOTEmail 找主管）
+      if (EMP_LIST.length === 0) EMP_LIST = res.data;
+
       const sel = $('lv_agent');
       let defaultAgent = '';
       // 找登入者的 agent_id
@@ -1615,7 +1618,7 @@ async function loadAgentOptions() {
       if (me && me.agent_id) defaultAgent = me.agent_id;
 
       res.data.forEach(e => {
-        if (e.emp_id !== SESSION.emp_id) {
+        if (String(e.emp_id) !== String(SESSION.emp_id)) {
           const opt = document.createElement('option');
           opt.value = e.emp_id;
           opt.textContent = `${e.name}（${e.dept}）`;
@@ -1624,21 +1627,18 @@ async function loadAgentOptions() {
       });
       // 三-1: 預設選代理人
       if (defaultAgent) sel.value = defaultAgent;
+
+      // ★ 代理人選單載好後，OT 加班人下拉也一併刷新（確保用完整 EMP_LIST）
+      refreshOTWorkerSelects();
     }
   } catch(e) {}
 }
 
 // ════ 加班表單 ════
-async function initOTForm() {
-  // 若 EMP_LIST 還是空的（staff 身份），先取得員工清單再新增第一列
-  if (EMP_LIST.length === 0) {
-    try {
-      const res = await api({ action: 'getEmployees' });
-      if (res.success) EMP_LIST = res.data;
-    } catch(e) {}
-  }
+function initOTForm() {
+  // EMP_LIST 可能還在載入中（loadAgentOptions 是非同步）
+  // 先用目前 EMP_LIST 建立第一列；loadAgentOptions 完成後 refreshOTWorkerSelects 會補正
   ot_addWorkerRow({ isApplicant: true });
-  // 其餘按鈕已在 HTML 用 onclick 直接綁定，不需重複綁定
 }
 
 let _workerCount = 0;
@@ -2701,17 +2701,26 @@ function refreshOTWorkerSelects() {
     `<option value="${e.emp_id}" data-name="${e.name}" data-dept="${e.dept||''}">${e.name}（${e.dept||''}）</option>`
   ).join('') + `<option value="__other">其他</option>`;
 
-  document.querySelectorAll('#ot_workers .ot-worker-sel').forEach(sel => {
-    const prevVal = sel.value; // 記住目前選中的值
+  const sels = document.querySelectorAll('#ot_workers .ot-worker-sel');
+
+  // 若 ot_workers 還沒有任何列（initOTForm 尚未執行或列是空的），不操作
+  // initOTForm 會在 DOM ready 後執行，此時可能已有列
+  sels.forEach((sel, idx) => {
+    const prevVal = sel.value; // 記住目前選中的值（可能是第一個 option 的值）
     sel.innerHTML = newOptions;
-    // 嘗試恢復選中：優先保留，若不在新清單則預設登入者
-    const found = [...sel.options].some(o => o.value === prevVal);
-    if (found) {
-      sel.value = prevVal;
-    } else if (SESSION) {
-      // 找登入者的 option
+
+    // 第一列（idx===0）強制選登入者；其他列嘗試恢復原選中
+    let targetVal = null;
+    if (idx === 0 && SESSION) {
+      targetVal = String(SESSION.emp_id);
+    } else {
+      const found = [...sel.options].some(o => o.value === prevVal);
+      targetVal = found ? prevVal : (SESSION ? String(SESSION.emp_id) : null);
+    }
+
+    if (targetVal) {
       for (const opt of sel.options) {
-        if (String(opt.value) === String(SESSION.emp_id)) {
+        if (String(opt.value) === targetVal) {
           sel.value = opt.value;
           break;
         }
