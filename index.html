@@ -1308,8 +1308,8 @@ function initApp() {
   initLeaveForm(); // 內含 loadAgentOptions()，完成後會呼叫 refreshOTWorkerSelects()
   initOTForm();    // 先用空/部份 EMP_LIST 建列，loadAgentOptions 完成後由 refreshOTWorkerSelects 補正
   initMyRecord();
-  // lv_balSummary 快覽由 loadBalance('bal_cards') 一併更新，確保資料一致
-  loadBalance('bal_cards');
+  loadBalance('lv_balSummary', true); // 請假頁快覽獨立呼叫，確保請假頁一登入就顯示
+  loadBalance('bal_cards');           // 我的餘額頁（成功時也會更新快覽，雙重保障）
 
   if (hasRole('supervisor')) {
     loadEmpList().then(() => {
@@ -2144,14 +2144,16 @@ async function loadBalance(targetId, mini=false) {
   // 快覽卡片（特休+加班/補休）
   const summaryData = res.data.filter(b => ['特休','補休'].includes(b.leave_type));
 
-  // 無論 mini 或完整版，都同步更新 lv_balSummary 快覽
-  const summary = $('lv_balSummary');
-  if (summary) {
-    summary.innerHTML = '';
-    renderBalCards(summary, summaryData, true);
+  // 同步更新 lv_balSummary 快覽（若目前不是在更新快覽本身）
+  if (targetId !== 'lv_balSummary') {
+    const summary = $('lv_balSummary');
+    if (summary) {
+      summary.innerHTML = '';
+      renderBalCards(summary, summaryData, true);
+    }
   }
 
-  // 完整版：顯示全部假別
+  // 渲染目標容器
   const show = mini ? summaryData : res.data;
   renderBalCards(el, show, mini);
 }
