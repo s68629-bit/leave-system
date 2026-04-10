@@ -2105,40 +2105,41 @@ async function loadBalance(targetId, mini=false) {
   if (!el) return;
   // 先清空，避免舊用戶資料殘留
   el.innerHTML = '';
-  if (!mini) $('bal_loading').style.display='';
+  const balLoading = $('bal_loading');
+  if (!mini && balLoading) balLoading.style.display='';
 
   let res;
   try {
     res = await api({ action:'getBalance', year: String(new Date().getFullYear()) });
   } catch(e) {
-    if (!mini) { $('bal_loading').style.display='none'; }
+    if (!mini && balLoading) { balLoading.style.display='none'; }
     el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">⚠️ 載入失敗，請重新整理</div>';
     return;
   }
-  if (!mini) $('bal_loading').style.display='none';
+  if (!mini && balLoading) balLoading.style.display='none';
   if (!res || !res.success) {
     el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">⚠️ 載入失敗，請重新整理</div>';
     return;
   }
 
   const year = new Date().getFullYear();
-  if (!mini) $('bal_year').textContent = `${year} 年度`;
+  const balYear = $('bal_year');
+  if (balYear && !mini) balYear.textContent = `${year} 年度`;
 
   el.innerHTML = '';
-  // 同時更新請假頁面快覽（確保兩者資料一致）
-  if (!mini) {
-    const summary = $('lv_balSummary');
-    if (summary) {
-      summary.innerHTML = '';
-      renderBalCards(summary, res.data, true);
-    }
+
+  // 快覽卡片（特休+加班/補休）
+  const summaryData = res.data.filter(b => ['特休','補休'].includes(b.leave_type));
+
+  // 無論 mini 或完整版，都同步更新 lv_balSummary 快覽
+  const summary = $('lv_balSummary');
+  if (summary) {
+    summary.innerHTML = '';
+    renderBalCards(summary, summaryData, true);
   }
 
-  const QUOTA_TYPES = ['特休', '補休'];
-  const show = mini
-    ? res.data.filter(b => ['特休','補休'].includes(b.leave_type))
-    : res.data;
-
+  // 完整版：顯示全部假別
+  const show = mini ? summaryData : res.data;
   renderBalCards(el, show, mini);
 }
 
