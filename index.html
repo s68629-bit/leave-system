@@ -1053,6 +1053,10 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('loginScreen').style.display = 'flex';
       document.getElementById('li_pwd').value = '';
       document.getElementById('li_err').textContent = '';
+      // 清除加班情境選單，避免帶到下一個使用者
+      const otPreset = document.getElementById('ot_preset');
+      if (otPreset) otPreset.value = '';
+      window.SESSION_PROFILE = null;
     });
   }
 
@@ -1703,11 +1707,15 @@ function ot_addWorkerRow(opts={}) {
   $('ot_workers').appendChild(div);
 
   // 預設申請人
-  if (opts.isApplicant) {
+  if (opts.isApplicant && SESSION) {
     const sel = div.querySelector('.ot-worker-sel');
-    // 選到當前登入者
+    // 統一用 String() 比對避免型別不符
     for (const opt of sel.options) {
-      if (opt.value === SESSION.emp_id) { sel.value = opt.value; break; }
+      if (String(opt.value) === String(SESSION.emp_id)) {
+        sel.value = opt.value;
+        sel.dispatchEvent(new Event('change')); // 觸發 change 更新姓名顯示
+        break;
+      }
     }
   }
 }
@@ -1825,6 +1833,9 @@ function resetOTForm() {
   ot_addWorkerRow({ isApplicant: true });
   $('ot_preview').style.display = 'none';
   $('ot_status').textContent = '';
+  // 清除預設情境選單
+  const preset = document.getElementById('ot_preset');
+  if (preset) preset.value = '';
 }
 
 // ════ 我的記錄 ════
@@ -2684,15 +2695,14 @@ function applyOTPreset() {
   const val = sel.value;
   if (!val) return;
   const [reason, note] = val.split('|');
-  // 把原因填入所有加班人的原因欄
+  // 把原因填入所有加班人的原因欄（全部覆蓋）
   document.querySelectorAll('#ot_workers .ot-reason').forEach(el => {
-    if (!el.value) el.value = reason; // 只填空的
+    el.value = reason;
   });
-  // 備註欄
+  // 備註欄（覆蓋）
   const noteEl = document.getElementById('ot_note');
-  if (noteEl && !noteEl.value) noteEl.value = note;
-  // 重置選單（保持可重複選）
-  setTimeout(() => sel.value = '', 100);
+  if (noteEl) noteEl.value = note;
+  // 保持選單顯示選中的值（不重置，讓使用者知道選了什麼）
 }
 
 // ════ 手機底部 Tab Bar ════
