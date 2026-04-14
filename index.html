@@ -500,8 +500,8 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
         <div class="toolbar">
           <input type="month" id="rec_month" onchange="loadMyLeaves()"/>
           <select id="rec_status" onchange="loadMyLeaves()">
+            <option value="approved" selected>有效</option>
             <option value="">全部狀態</option>
-            <option value="approved">有效</option>
             <option value="cancelled">已取消</option>
           </select>
           <button class="btn btn-secondary" onclick="loadMyLeaves()">🔍 查詢</button>
@@ -521,6 +521,11 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
         <div class="card-title"><span class="icon">⏰</span>我的加班記錄</div>
         <div class="toolbar">
           <input type="month" id="otrec_month" onchange="loadMyOT()"/>
+          <select id="otrec_status" onchange="loadMyOT()">
+            <option value="active" selected>有效</option>
+            <option value="">全部狀態</option>
+            <option value="cancelled">已取消</option>
+          </select>
           <button class="btn btn-secondary" onclick="loadMyOT()">🔍 查詢</button>
         </div>
         <div class="tbl-wrap">
@@ -712,6 +717,69 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
             <button class="btn btn-primary" onclick="saveCfg()">💾 儲存設定</button>
           </div>
           <div id="cfg_status"></div>
+        </div>
+
+        <!-- 預設收件人設定 -->
+        <div class="card" style="margin-top:14px">
+          <div class="card-title"><span class="icon">📧</span>預設通知收件人設定</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:10px" id="email_cfg_grid">
+
+            <!-- 請假 To -->
+            <div>
+              <div style="font-weight:700;font-size:13px;color:var(--primary);margin-bottom:6px">📝 請假通知 — 主要收件人 To</div>
+              <div style="display:flex;gap:6px;margin-bottom:6px">
+                <select id="lv_to_sel" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px">
+                  <option value="">選擇員工...</option>
+                </select>
+                <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="addEmailRecip('lv_to')">＋ 加入</button>
+              </div>
+              <div id="lv_to_list" style="min-height:32px"></div>
+            </div>
+
+            <!-- 請假 Cc -->
+            <div>
+              <div style="font-weight:700;font-size:13px;color:var(--primary);margin-bottom:6px">📝 請假通知 — 固定副件 Cc</div>
+              <div style="display:flex;gap:6px;margin-bottom:6px">
+                <select id="lv_cc_sel" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px">
+                  <option value="">選擇員工...</option>
+                </select>
+                <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="addEmailRecip('lv_cc')">＋ 加入</button>
+              </div>
+              <div id="lv_cc_list" style="min-height:32px"></div>
+            </div>
+
+            <!-- 加班 To -->
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#e65100;margin-bottom:6px">⏰ 加班通知 — 主要收件人 To</div>
+              <div style="display:flex;gap:6px;margin-bottom:6px">
+                <select id="ot_to_sel" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px">
+                  <option value="">選擇員工...</option>
+                </select>
+                <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="addEmailRecip('ot_to')">＋ 加入</button>
+              </div>
+              <div id="ot_to_list" style="min-height:32px"></div>
+            </div>
+
+            <!-- 加班 Cc -->
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#e65100;margin-bottom:6px">⏰ 加班通知 — 固定副件 Cc</div>
+              <div style="display:flex;gap:6px;margin-bottom:6px">
+                <select id="ot_cc_sel" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px">
+                  <option value="">選擇員工...</option>
+                </select>
+                <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="addEmailRecip('ot_cc')">＋ 加入</button>
+              </div>
+              <div id="ot_cc_list" style="min-height:32px"></div>
+            </div>
+
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:10px">
+            💡 只顯示有設定 Email 的員工。選取後點「＋ 加入」，可加入多人，點 ✕ 移除。
+          </div>
+          <div class="actions" style="margin-top:14px">
+            <button class="btn btn-primary" onclick="saveEmailCfg()">💾 儲存收件人設定</button>
+          </div>
+          <div id="email_cfg_status"></div>
         </div>
       </div>
 
@@ -1062,7 +1130,11 @@ document.addEventListener('DOMContentLoaded', () => {
           api({action:'getEmployees'}).then(r => { if(r.success) EMP_LIST = r.data; initBalAdj(); });
         } else { initBalAdj(); }
       } else if (t.dataset.atab === 'cfg') {
-        loadCfg();
+        loadCfg().then(() => {
+          syncEmailCfgToConsts();
+          if (EMP_LIST.length) initEmailCfg();
+          else api({action:'getEmployees'}).then(r => { if(r.success){ EMP_LIST=r.data; OT_EMP_LIST=r.data; } initEmailCfg(); });
+        });
       } else if (t.dataset.atab === 'cal') {
         initCalPane();
       } else if (t.dataset.atab === 'export') {
@@ -1275,7 +1347,9 @@ function initApp() {
   // 初始化
   initTabs();
   // 登入後預先載入系統設定（calcOTHours 需要午休/晚餐時段）
-  api({ action:'getConfig' }).then(r => { if (r.success) CFG = r.data; });
+  api({ action:'getConfig' }).then(r => {
+    if (r.success) { CFG = r.data; syncEmailCfgToConsts(); }
+  });
   initLeaveForm(); // 內含 loadAgentOptions()，完成後會呼叫 refreshOTWorkerSelects()
   initOTForm();    // 先用空/部份 EMP_LIST 建列，loadAgentOptions 完成後由 refreshOTWorkerSelects 補正
   initMyRecord();
@@ -1539,14 +1613,24 @@ function buildLeaveEmail() {
     '（本信由請假系統產生）'
   ].filter(l=>l!==null).join('\n');
 
-  // 收件人規則：To=直屬主管，Cc=自己+人資+代理人+其他通知人（去重）
+  // 收件人規則：
+  // To = CFG 請假 To 設定（lv_to_emails），若空則用直屬主管
+  // Cc = CFG 請假 Cc 設定（lv_cc_emails）+ 自己 + 代理人 + 個人通知人
+  const lvToCfg = (window._LV_TO_CFG || []).map(x=>x.email).filter(Boolean);
+  const lvCcCfg = (window._LV_CC_CFG || []).map(x=>x.email).filter(Boolean);
+
   const toEmails = [];
-  if (supervisorEmp?.email) toEmails.push(supervisorEmp.email);
-  else if (LV_TO[0]?.email) toEmails.push(LV_TO[0].email); // 備用
+  if (lvToCfg.length) {
+    lvToCfg.forEach(e => toEmails.push(e));
+  } else if (supervisorEmp?.email) {
+    toEmails.push(supervisorEmp.email);
+  } else if (LV_TO[0]?.email) {
+    toEmails.push(LV_TO[0].email); // 最後備用
+  }
 
   const ccSet = new Set();
+  lvCcCfg.forEach(e => ccSet.add(e));
   if (SESSION.email) ccSet.add(SESSION.email);
-  if (CFG.hr_email)  ccSet.add(CFG.hr_email);
   if (agentEmp?.email) ccSet.add(agentEmp.email);
   if (me.notify_emails) me.notify_emails.split(',').map(e=>e.trim()).filter(e=>e).forEach(e=>ccSet.add(e));
   // 排除已在 To 的
@@ -1905,7 +1989,10 @@ function buildOTEmail() {
   lines.push('', '（本信由請假系統產生）');
 
   const cc = [];
-  OT_CC_FIXED.forEach(c => cc.push(c.email));
+  // 優先用 CFG 加班 Cc 設定，若空則用舊的 OT_CC_FIXED
+  const otCcCfg = (window._OT_CC_CFG || []).map(x=>x.email).filter(Boolean);
+  if (otCcCfg.length) otCcCfg.forEach(e => cc.push(e));
+  else OT_CC_FIXED.forEach(c => cc.push(c.email));
   if (SESSION.email) cc.push(SESSION.email);
 
   // 收件人：To=直屬主管+最高主管，Cc=自己+人資（去重）
@@ -1913,8 +2000,11 @@ function buildOTEmail() {
   const supEmp2 = EMP_LIST.find(e=>String(e.emp_id)===String(me2.supervisor_id));
   const toSet = new Set();
   if (supEmp2?.email) toSet.add(supEmp2.email);
-  if (CFG.top_email)  toSet.add(CFG.top_email);
-  if (!toSet.size && OT_TO[0]?.email) toSet.add(OT_TO[0].email);
+  // 優先用 CFG 加班 To 設定，若空則用 top_email，最後備用 OT_TO
+  const otToCfg = (window._OT_TO_CFG || []).map(x=>x.email).filter(Boolean);
+  if (otToCfg.length) otToCfg.forEach(e => toSet.add(e));
+  else if (CFG.top_email) toSet.add(CFG.top_email);
+  else if (OT_TO[0]?.email) toSet.add(OT_TO[0].email);
 
   const ccSet2 = new Set();
   if (SESSION.email) ccSet2.add(SESSION.email);
@@ -1962,10 +2052,12 @@ function initMyRecord() {
 
 async function loadMyLeaves() {
   const statusFilter = $('rec_status').value;
+  // 預設只顯示有效記錄；選了「已取消」或「全部狀態」才包含取消
+  const inclCancelled = (statusFilter === 'cancelled' || statusFilter === '') ? 'true' : 'false';
   const params = {
     action:'getLeaves',
     emp_id: SESSION.emp_id,
-    include_cancelled: 'true',
+    include_cancelled: inclCancelled,
   };
   const recMonth = $('rec_month').value;
   if (recMonth) params.month = recMonth;
@@ -2029,13 +2121,18 @@ async function cancelLeave(id, btn) {
 }
 
 async function loadMyOT() {
-  const otParams = { action:'getOvertimes', emp_id:SESSION.emp_id, include_cancelled:'true' };
+  const otStatus = $('otrec_status')?.value;
+  const inclCancelled = (otStatus === '' || otStatus === 'cancelled') ? 'true' : 'false';
+  const otParams = { action:'getOvertimes', emp_id:SESSION.emp_id, include_cancelled: inclCancelled };
   const otMonth = $('otrec_month').value;
   if (otMonth) otParams.month = otMonth;
   const res = await api(otParams);
   const tbody = $('otrec_tbody');
   tbody.innerHTML = '';
-  const otRows = res.success ? res.data : [];
+  let otRows = res.success ? res.data : [];
+  // 前端再過濾狀態
+  if (otStatus === 'cancelled') otRows = otRows.filter(r => r.status === 'cancelled');
+  else if (otStatus === 'active') otRows = otRows.filter(r => r.status !== 'cancelled');
   if (!otRows.length) { $('otrec_empty').style.display = ''; return; }
   $('otrec_empty').style.display = 'none';
   otRows.forEach(r => {
@@ -2669,6 +2766,113 @@ function initBalAdj() {
   };
 }
 
+
+// ════ 預設收件人設定 ════
+// 存格式：逗號分隔的 email 字串
+const EMAIL_CFG_KEYS = ['lv_to', 'lv_cc', 'ot_to', 'ot_cc'];
+
+// 初始化收件人選取 UI（在 initAdminPane 完成後呼叫）
+function initEmailCfg() {
+  // 填入員工下拉（只有有 email 的人）
+  const empWithEmail = EMP_LIST.filter(e => e.email);
+  EMAIL_CFG_KEYS.forEach(key => {
+    const sel = $(`${key}_sel`);
+    if (!sel) return;
+    sel.innerHTML = '<option value="">選擇員工...</option>';
+    empWithEmail.forEach(e => {
+      const opt = document.createElement('option');
+      opt.value = e.email;
+      opt.dataset.name = e.name;
+      opt.textContent = `${e.name}（${e.dept}）`;
+      sel.appendChild(opt);
+    });
+  });
+  // 載入現有設定
+  loadEmailCfgFromCFG();
+}
+
+// 從 CFG 載入已儲存的收件人清單
+function loadEmailCfgFromCFG() {
+  EMAIL_CFG_KEYS.forEach(key => {
+    const cfgKey = key + '_emails'; // lv_to_emails, lv_cc_emails...
+    const emails = (CFG[cfgKey] || '').split(',').map(e => e.trim()).filter(Boolean);
+    renderEmailList(key, emails);
+  });
+}
+
+// 渲染已選清單
+function renderEmailList(key, emails) {
+  const listEl = $(`${key}_list`);
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  if (!emails.length) {
+    listEl.innerHTML = '<span style="color:var(--muted);font-size:12px">尚未設定</span>';
+    return;
+  }
+  emails.forEach(email => {
+    const emp = EMP_LIST.find(e => e.email === email);
+    const name = emp ? emp.name : email;
+    const tag = document.createElement('span');
+    tag.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:#e8f0fe;color:#1a73e8;border-radius:14px;padding:3px 10px;font-size:12px;margin:2px';
+    tag.innerHTML = `${name} <span style="cursor:pointer;font-weight:bold;color:#666" onclick="removeEmailRecip('${key}','${email}')">✕</span>`;
+    listEl.appendChild(tag);
+  });
+}
+
+// 加入收件人
+function addEmailRecip(key) {
+  const sel = $(`${key}_sel`);
+  if (!sel || !sel.value) return;
+  const email = sel.value;
+  const cfgKey = key + '_emails';
+  const current = (CFG[cfgKey] || '').split(',').map(e => e.trim()).filter(Boolean);
+  if (current.includes(email)) { sel.value = ''; return; } // 已存在
+  current.push(email);
+  CFG[cfgKey] = current.join(',');
+  renderEmailList(key, current);
+  sel.value = '';
+}
+
+// 移除收件人
+function removeEmailRecip(key, email) {
+  const cfgKey = key + '_emails';
+  const current = (CFG[cfgKey] || '').split(',').map(e => e.trim()).filter(Boolean);
+  const updated = current.filter(e => e !== email);
+  CFG[cfgKey] = updated.join(',');
+  renderEmailList(key, updated);
+}
+
+// 儲存收件人設定
+async function saveEmailCfg() {
+  const params = { action:'saveConfig' };
+  EMAIL_CFG_KEYS.forEach(key => {
+    params[key + '_emails'] = CFG[key + '_emails'] || '';
+  });
+  const res = await api(params);
+  if (res.success) {
+    // 同步更新 LV_TO / OT_TO / OT_CC_FIXED 讓後續寄信用
+    syncEmailCfgToConsts();
+  }
+  showStatus('email_cfg_status', res.success ? '✅ 收件人設定已儲存' : '❌ '+res.message, res.success?'ok':'err');
+}
+
+// 將 CFG 的收件人設定同步到全域常數（供 buildLeaveEmail/buildOTEmail 使用）
+function syncEmailCfgToConsts() {
+  const parseEmails = (key) => {
+    const cfgKey = key + '_emails';
+    return (CFG[cfgKey] || '').split(',').map(e => e.trim()).filter(Boolean)
+      .map(email => {
+        const emp = EMP_LIST.find(x => x.email === email);
+        return { name: emp ? emp.name : email, email };
+      });
+  };
+  // 更新全域常數
+  window._LV_TO_CFG = parseEmails('lv_to');
+  window._LV_CC_CFG = parseEmails('lv_cc');
+  window._OT_TO_CFG = parseEmails('ot_to');
+  window._OT_CC_CFG = parseEmails('ot_cc');
+}
+
 // 系統設定
 async function loadCfg() {
   const res = await api({ action:'getConfig' });
@@ -2678,8 +2882,6 @@ async function loadCfg() {
   container.innerHTML = '';
 
   const CFG_META = [
-    { key:'hr_email',    label:'人資 Email', desc:'請假/加班通知固定副件（所有申請都會 Cc）', type:'text' },
-    { key:'top_email',   label:'最高主管 Email', desc:'加班通知固定主要收件人（To）', type:'text' },
     { key:'work_start',  label:'上班時間', desc:'每天正式上班時間', type:'time' },
     { key:'work_end',    label:'下班時間', desc:'每天正式下班時間', type:'time' },
     { key:'lunch_start', label:'午休開始', desc:'午休開始時間（不計入請假/加班時數）', type:'time' },
@@ -2717,7 +2919,7 @@ async function loadCfg() {
 
 async function saveCfg() {
   const params = { action:'saveConfig' };
-  ['hr_email','top_email','work_start','work_end','lunch_start','lunch_end','dinner_start','dinner_end','min_leave_unit','min_ot_unit','annual_leave_cycle','ot_to_comp_ratio']
+  ['work_start','work_end','lunch_start','lunch_end','dinner_start','dinner_end','min_leave_unit','min_ot_unit','annual_leave_cycle','ot_to_comp_ratio']
     .forEach(k => { const el=$(`cfg_${k}`); if(el) params[k]=el.value; });
   const res = await api(params);
   if (res.success) CFG = {...CFG, ...params}; // 更新本地 CFG
