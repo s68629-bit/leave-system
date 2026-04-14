@@ -978,8 +978,17 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
       <div class="col-6 fld"><label>直屬主管工號（主要收件者 To）</label><input type="text" id="me_supervisor" placeholder="工號"/></div>
       <div class="col-6 fld"><label>代理人工號（副件 Cc）</label><input type="text" id="me_agent" placeholder="工號"/></div>
       <div class="col-12 fld">
-        <label>其他預設通知人 Email（多組用逗號分隔）</label>
-        <input type="text" id="me_notify_emails" placeholder="例：a@tony.com.tw,b@tony.com.tw"/>
+        <label>其他預設通知人
+          <span style="font-size:11px;color:var(--muted);text-transform:none;letter-spacing:0">（請假/加班通知時額外 Cc 的人員）</span>
+        </label>
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <select id="me_notify_sel" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px">
+            <option value="">選擇員工...</option>
+          </select>
+          <button type="button" class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="addNotifyRecip()">＋ 加入</button>
+        </div>
+        <div id="me_notify_list" style="min-height:28px;margin-bottom:4px"></div>
+        <input type="hidden" id="me_notify_emails"/>
       </div>
       <div class="col-12 fld">
         <label>跨部門可查看部門 <span style="font-size:11px;color:var(--muted);text-transform:none;letter-spacing:0">（supervisor 專用，多個部門用逗號分隔，如「黃光,電鑄」）</span></label>
@@ -2640,15 +2649,71 @@ function onDeptSelChange() {
 }
 
 let _editEmpId = null;
+
+// ════ 員工通知人選取 ════
+function initNotifySel() {
+  // 填入員工下拉（有 email 的人）
+  const sel = $('me_notify_sel');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">選擇員工...</option>';
+  const empWithEmail = (EMP_LIST.length ? EMP_LIST : []).filter(e => e.email);
+  empWithEmail.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e.email;
+    opt.dataset.name = e.name;
+    opt.textContent = `${e.name}（${e.dept}）`;
+    sel.appendChild(opt);
+  });
+}
+
+function renderNotifyList(emailStr) {
+  const listEl = $('me_notify_list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  const emails = emailStr.split(',').map(e=>e.trim()).filter(Boolean);
+  if (!emails.length) {
+    listEl.innerHTML = '<span style="color:var(--muted);font-size:12px">尚未設定</span>';
+    return;
+  }
+  emails.forEach(email => {
+    const emp = EMP_LIST.find(e => e.email === email);
+    const name = emp ? emp.name : email;
+    const tag = document.createElement('span');
+    tag.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:#e8f0fe;color:#1a73e8;border-radius:14px;padding:3px 10px;font-size:12px;margin:2px';
+    tag.innerHTML = `${name} <span style="cursor:pointer;font-weight:bold;color:#666" onclick="removeNotifyRecip('${email}')">✕</span>`;
+    listEl.appendChild(tag);
+  });
+}
+
+function addNotifyRecip() {
+  const sel = $('me_notify_sel');
+  if (!sel || !sel.value) return;
+  const email = sel.value;
+  const current = ($('me_notify_emails').value||'').split(',').map(e=>e.trim()).filter(Boolean);
+  if (current.includes(email)) { sel.value=''; return; }
+  current.push(email);
+  $('me_notify_emails').value = current.join(',');
+  renderNotifyList(current.join(','));
+  sel.value = '';
+}
+
+function removeNotifyRecip(email) {
+  const current = ($('me_notify_emails').value||'').split(',').map(e=>e.trim()).filter(Boolean);
+  const updated = current.filter(e => e !== email);
+  $('me_notify_emails').value = updated.join(',');
+  renderNotifyList(updated.join(','));
+}
+
 async function openEditEmp(empId) {
   _editEmpId = empId;
   $('modal_emp_title').textContent = empId ? '編輯員工' : '新增員工';
   $('modal_emp_err').textContent = '';
   // 若 EMP_LIST 是空的，先從後端取
-  if (empId && EMP_LIST.length === 0) {
+  if (EMP_LIST.length === 0) {
     const r = await api({ action:'getEmployees' });
     if (r.success) EMP_LIST = r.data;
   }
+  initNotifySel(); // 初始化通知人下拉（每次開啟都刷新）
   if (empId) {
     // emp_id 可能是數字或字串，統一轉字串比對
     const e = EMP_LIST.find(x=>String(x.emp_id)===String(empId));
@@ -2666,10 +2731,12 @@ async function openEditEmp(empId) {
     $('me_agent').value=e.agent_id||'';
     $('me_cycle').value=e.annual_leave_cycle||'hire_date';
     $('me_notify_emails').value=e.notify_emails||'';
+    renderNotifyList(e.notify_emails||'');
     $('me_extra_depts').value=e.extra_depts||'';
     $('me_view_only_calendar').checked = (e.view_only_calendar === 'true' || e.view_only_calendar === true);
   } else {
     ['me_empId','me_name','me_dept','me_email','me_hireDate','me_supervisor','me_agent','me_notify_emails','me_extra_depts'].forEach(id=>{ if($(id)) $(id).value=''; });
+    renderNotifyList('');
     $('me_view_only_calendar').checked = false;
     $('me_empId').readOnly=false; $('me_role').value='staff'; $('me_isAdmin').checked=false; $('me_cycle').value='hire_date';
     fillDeptSelect('');
