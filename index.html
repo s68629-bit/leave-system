@@ -1001,7 +1001,8 @@ function calNav(delta) {
   _calDate = new Date(_calDate.getFullYear(), _calDate.getMonth() + delta, 1);
   drawLeaveCalendar(_calDate);
 } // { token, emp_id, name, dept, role, email }
-let EMP_LIST = [];  // 員工清單（主管以上可取得）
+let EMP_LIST = [];     // 員工清單（主管以上可取得，用於代理人/寄信）
+let OT_EMP_LIST = []; // 加班人員清單（全公司，用於加班申請選人）
 let CFG = {};       // system_config
 
 // ════ 工具函式 ════
@@ -1018,6 +1019,7 @@ document.addEventListener('DOMContentLoaded', () => {
     logoutBtn.addEventListener('click', () => {
       SESSION = null;
       EMP_LIST = [];
+      OT_EMP_LIST = [];
       CFG = {};
       // 重置所有 Tab 顯示
       document.getElementById('tab_mgr').style.display = 'none';
@@ -1229,6 +1231,10 @@ function initApp() {
   if (balSummary) balSummary.innerHTML = '';
   const balCards = $('bal_cards');
   if (balCards) balCards.innerHTML = '';
+  // 清空加班人員列（避免上一個登入者的殘留）
+  const otWorkers = $('ot_workers');
+  if (otWorkers) otWorkers.innerHTML = '';
+  _workerCount = 0;
 
   // 頂部資訊
   $('tb_name').textContent = SESSION.name;
@@ -1714,9 +1720,15 @@ async function loadAgentOptions() {
         sel.value = ''; // 沒有設定代理人，強制回到「不指定」
       }
 
-      // ★ EMP_LIST 填好後：先確保第一列存在，再刷新所有加班人下拉
+      // ★ EMP_LIST 填好後：先確保第一列存在
       ot_initFirstRow();
-      refreshOTWorkerSelects();
+
+      // 加班人員選單需要全公司所有員工（包含無 email 的人）
+      // 另外呼叫 for_ot=true 取得完整名單
+      api({ action:'getEmployees', for_ot:'true' }).then(r2 => {
+        if (r2.success && r2.data.length) OT_EMP_LIST = r2.data;
+        refreshOTWorkerSelects();
+      });
     }
   } catch(e) {}
 }
@@ -1744,8 +1756,8 @@ function ot_addWorkerRow(opts={}) {
   div.className = 'ot-row';
   div.id = `ot_w_${id}`;
 
-  // 優先用 EMP_LIST，若為空則至少顯示登入者
-  const empOptions = EMP_LIST.length ? EMP_LIST : (SESSION ? [SESSION] : []);
+  // 加班人員選單：優先用 OT_EMP_LIST（全公司），其次 EMP_LIST，最後只顯示登入者
+  const empOptions = OT_EMP_LIST.length ? OT_EMP_LIST : (EMP_LIST.length ? EMP_LIST : (SESSION ? [SESSION] : []));
   const names = empOptions.map(e=>`<option value="${e.emp_id}" data-name="${e.name}" data-dept="${e.dept||''}">${e.name}（${e.dept||''}）</option>`).join('')
     + `<option value="__other">其他</option>`;
 
@@ -2925,8 +2937,9 @@ $('modal_mail_cancel').onclick = () => $('modal_mail').classList.remove('open');
 // ════ 加班預設情境 ════
 // 重新整理所有加班人員的下拉選單（EMP_LIST 異步載完後呼叫）
 function refreshOTWorkerSelects() {
-  if (!EMP_LIST.length) return;
-  const newOptions = EMP_LIST.map(e =>
+  const otList = OT_EMP_LIST.length ? OT_EMP_LIST : EMP_LIST;
+  if (!otList.length) return;
+  const newOptions = otList.map(e =>
     `<option value="${e.emp_id}" data-name="${e.name}" data-dept="${e.dept||''}">${e.name}（${e.dept||''}）</option>`
   ).join('') + `<option value="__other">其他</option>`;
 
