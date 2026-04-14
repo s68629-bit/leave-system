@@ -719,68 +719,6 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
           <div id="cfg_status"></div>
         </div>
 
-        <!-- 預設收件人設定 -->
-        <div class="card" style="margin-top:14px">
-          <div class="card-title"><span class="icon">📧</span>預設通知收件人設定</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:10px" id="email_cfg_grid">
-
-            <!-- 請假 To -->
-            <div>
-              <div style="font-weight:700;font-size:13px;color:var(--primary);margin-bottom:6px">📝 請假通知 — 主要收件人 To</div>
-              <div style="display:flex;gap:6px;margin-bottom:6px">
-                <select id="lv_to_sel" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px">
-                  <option value="">選擇員工...</option>
-                </select>
-                <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="addEmailRecip('lv_to')">＋ 加入</button>
-              </div>
-              <div id="lv_to_list" style="min-height:32px"></div>
-            </div>
-
-            <!-- 請假 Cc -->
-            <div>
-              <div style="font-weight:700;font-size:13px;color:var(--primary);margin-bottom:6px">📝 請假通知 — 固定副件 Cc</div>
-              <div style="display:flex;gap:6px;margin-bottom:6px">
-                <select id="lv_cc_sel" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px">
-                  <option value="">選擇員工...</option>
-                </select>
-                <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="addEmailRecip('lv_cc')">＋ 加入</button>
-              </div>
-              <div id="lv_cc_list" style="min-height:32px"></div>
-            </div>
-
-            <!-- 加班 To -->
-            <div>
-              <div style="font-weight:700;font-size:13px;color:#e65100;margin-bottom:6px">⏰ 加班通知 — 主要收件人 To</div>
-              <div style="display:flex;gap:6px;margin-bottom:6px">
-                <select id="ot_to_sel" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px">
-                  <option value="">選擇員工...</option>
-                </select>
-                <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="addEmailRecip('ot_to')">＋ 加入</button>
-              </div>
-              <div id="ot_to_list" style="min-height:32px"></div>
-            </div>
-
-            <!-- 加班 Cc -->
-            <div>
-              <div style="font-weight:700;font-size:13px;color:#e65100;margin-bottom:6px">⏰ 加班通知 — 固定副件 Cc</div>
-              <div style="display:flex;gap:6px;margin-bottom:6px">
-                <select id="ot_cc_sel" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px">
-                  <option value="">選擇員工...</option>
-                </select>
-                <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="addEmailRecip('ot_cc')">＋ 加入</button>
-              </div>
-              <div id="ot_cc_list" style="min-height:32px"></div>
-            </div>
-
-          </div>
-          <div style="font-size:12px;color:var(--muted);margin-top:10px">
-            💡 只顯示有設定 Email 的員工。選取後點「＋ 加入」，可加入多人，點 ✕ 移除。
-          </div>
-          <div class="actions" style="margin-top:14px">
-            <button class="btn btn-primary" onclick="saveEmailCfg()">💾 儲存收件人設定</button>
-          </div>
-          <div id="email_cfg_status"></div>
-        </div>
       </div>
 
       <!-- 行事曆管理 -->
@@ -915,11 +853,11 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
       <div class="fld">
-        <label>收件人 To（逗號分隔）</label>
+        <label>收件人 To（分號或逗號分隔）</label>
         <textarea id="mail_to" style="width:100%;height:70px;font-size:12px;resize:vertical"></textarea>
       </div>
       <div class="fld">
-        <label>副件 Cc（逗號分隔）</label>
+        <label>副件 Cc（分號或逗號分隔）</label>
         <textarea id="mail_cc" style="width:100%;height:70px;font-size:12px;resize:vertical"></textarea>
       </div>
     </div>
@@ -978,8 +916,8 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
       <div class="col-6 fld"><label>直屬主管工號（主要收件者 To）</label><input type="text" id="me_supervisor" placeholder="工號"/></div>
       <div class="col-6 fld"><label>代理人工號（副件 Cc）</label><input type="text" id="me_agent" placeholder="工號"/></div>
       <div class="col-12 fld">
-        <label>其他預設通知人
-          <span style="font-size:11px;color:var(--muted);text-transform:none;letter-spacing:0">（請假/加班通知時額外 Cc 的人員）</span>
+        <label>請假額外通知人
+          <span style="font-size:11px;color:var(--muted);text-transform:none;letter-spacing:0">（請假通知時額外 Cc 的人員，加班通知不使用）</span>
         </label>
         <div style="display:flex;gap:6px;margin-bottom:6px">
           <select id="me_notify_sel" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px">
@@ -1588,6 +1526,53 @@ async function sendLeave(sendMail) {
   drawLeaveCalendar(_calDate);
 }
 
+
+// ════ 收件人輔助函數 ════
+// 找主管鏈：回傳 { supervisor, upper, top }，各為員工物件或 null
+function findManagerChain(empId) {
+  const me = EMP_LIST.find(e => String(e.emp_id) === String(empId)) || {};
+  // 一線主管
+  const supervisor = me.supervisor_id
+    ? EMP_LIST.find(e => String(e.emp_id) === String(me.supervisor_id)) || null
+    : null;
+  // 上層主管（一線主管的 supervisor）
+  const upper = supervisor?.supervisor_id
+    ? EMP_LIST.find(e => String(e.emp_id) === String(supervisor.supervisor_id)) || null
+    : null;
+  // 最高主管：role = top 的人（可能有多人）
+  const tops = EMP_LIST.filter(e => e.role === 'top' && e.email);
+  return { me, supervisor, upper, tops };
+}
+
+// 組建收件人 Set（去重），回傳 { toSet, ccSet }
+function buildRecipients(empId, { includeTop=false, extraCcEmails=[] } = {}) {
+  const { me, supervisor, upper, tops } = findManagerChain(empId);
+
+  const toSet = new Set();
+  const ccSet = new Set();
+
+  // To：一線主管 + 上層主管
+  if (supervisor?.email) toSet.add(supervisor.email);
+  if (upper?.email) toSet.add(upper.email);
+  // 若包含最高主管（請假>1天 或 加班）
+  if (includeTop) tops.forEach(t => toSet.add(t.email));
+
+  // Cc：人資 + 員工本人 + 代理人
+  if (CFG.hr_email) ccSet.add(CFG.hr_email);
+  if (me.email || SESSION.email) ccSet.add(me.email || SESSION.email);
+
+  // 代理人（請假用，需外部傳入）
+  if (options.agentEmail) ccSet.add(options.agentEmail);
+
+  // 額外 Cc（個人通知人）
+  extraCcEmails.forEach(e => { if (e) ccSet.add(e); });
+
+  // 去重：To 裡有的不放 Cc
+  toSet.forEach(e => ccSet.delete(e));
+
+  return { toSet, ccSet };
+}
+
 function buildLeaveEmail() {
   const type   = $('lv_type').value;
   const start  = $('lv_startDate').value;
@@ -1596,15 +1581,8 @@ function buildLeaveEmail() {
   const hours  = getLeaveHours();
   const reason = $('lv_reason').value === '__custom' ? $('lv_reasonCustom').value : $('lv_reason').value;
   const agentId= $('lv_agent').value;
-
-  // 找代理人名稱
   const agentEmp = EMP_LIST.find(e=>String(e.emp_id)===String(agentId));
   const agentName= agentEmp ? agentEmp.name : (agentId||'無');
-
-  // 找直屬主管 email（To）
-  const me = EMP_LIST.find(e=>String(e.emp_id)===String(SESSION.emp_id)) || SESSION || {};
-  const supervisorEmp = EMP_LIST.find(e=>String(e.emp_id)===String(me.supervisor_id));
-
   const periodTxt = { day:'全天', am:'上半天', pm:'下半天', hour:`${$('lv_startTime').value}–${$('lv_endTime').value}` }[period]||'';
 
   const body = [
@@ -1622,36 +1600,27 @@ function buildLeaveEmail() {
     '（本信由請假系統產生）'
   ].filter(l=>l!==null).join('\n');
 
-  // 收件人規則：
-  // To = CFG 請假 To 設定（lv_to_emails），若空則用直屬主管
-  // Cc = CFG 請假 Cc 設定（lv_cc_emails）+ 自己 + 代理人 + 個人通知人
-  const lvToCfg = (window._LV_TO_CFG || []).map(x=>x.email).filter(Boolean);
-  const lvCcCfg = (window._LV_CC_CFG || []).map(x=>x.email).filter(Boolean);
+  // 請假天數 > 1天 → includeTop = true
+  const isMultiDay = start !== end;
 
-  const toEmails = [];
-  if (lvToCfg.length) {
-    lvToCfg.forEach(e => toEmails.push(e));
-  } else if (supervisorEmp?.email) {
-    toEmails.push(supervisorEmp.email);
-  } else if (LV_TO[0]?.email) {
-    toEmails.push(LV_TO[0].email); // 最後備用
-  }
+  // 個人請假額外通知人（notify_emails）
+  const me = EMP_LIST.find(e=>String(e.emp_id)===String(SESSION.emp_id)) || SESSION || {};
+  const extraCc = (me.notify_emails||'').split(',').map(e=>e.trim()).filter(Boolean);
 
-  const ccSet = new Set();
-  lvCcCfg.forEach(e => ccSet.add(e));
-  if (SESSION.email) ccSet.add(SESSION.email);
-  if (agentEmp?.email) ccSet.add(agentEmp.email);
-  if (me.notify_emails) me.notify_emails.split(',').map(e=>e.trim()).filter(e=>e).forEach(e=>ccSet.add(e));
-  // 排除已在 To 的
-  toEmails.forEach(e=>ccSet.delete(e));
-  const ccEmails = [...ccSet];
+  const { toSet, ccSet } = buildRecipients(SESSION.emp_id, {
+    includeTop: isMultiDay,
+    extraCcEmails: extraCc,
+    agentEmail: agentEmp?.email || ''
+  });
 
-  const toNames = toEmails.map(e=>{ const emp=EMP_LIST.find(x=>x.email===e); return emp?emp.name:e; });
-  const ccNames = ccEmails.map(e=>{ const emp=EMP_LIST.find(x=>x.email===e); return emp?emp.name:e; });
+  const toArr = [...toSet];
+  const ccArr = [...ccSet];
+  const toNames = toArr.map(e=>{ const emp=EMP_LIST.find(x=>x.email===e); return emp?emp.name:e; });
+  const ccNames = ccArr.map(e=>{ const emp=EMP_LIST.find(x=>x.email===e); return emp?emp.name:e; });
 
   return {
-    toEmails: toEmails.join(','),
-    ccEmails: ccEmails.join(','),
+    toEmails: toArr.join(','),
+    ccEmails: ccArr.join(','),
     toTxt:    toNames.join('、'),
     ccTxt:    ccNames.join('、'),
     subject:  `請假申請 ${SESSION.name} ${type} ${start}`,
@@ -1997,32 +1966,11 @@ function buildOTEmail() {
   if ($('ot_note').value) lines.push('', `備註：${$('ot_note').value}`);
   lines.push('', '（本信由請假系統產生）');
 
-  const cc = [];
-  // 優先用 CFG 加班 Cc 設定，若空則用舊的 OT_CC_FIXED
-  const otCcCfg = (window._OT_CC_CFG || []).map(x=>x.email).filter(Boolean);
-  if (otCcCfg.length) otCcCfg.forEach(e => cc.push(e));
-  else OT_CC_FIXED.forEach(c => cc.push(c.email));
-  if (SESSION.email) cc.push(SESSION.email);
-
-  // 收件人：To=直屬主管+最高主管，Cc=自己+人資（去重）
-  const me2 = EMP_LIST.find(e=>String(e.emp_id)===String(SESSION.emp_id))||{};
-  const supEmp2 = EMP_LIST.find(e=>String(e.emp_id)===String(me2.supervisor_id));
-  const toSet = new Set();
-  if (supEmp2?.email) toSet.add(supEmp2.email);
-  // 優先用 CFG 加班 To 設定，若空則用 top_email，最後備用 OT_TO
-  const otToCfg = (window._OT_TO_CFG || []).map(x=>x.email).filter(Boolean);
-  if (otToCfg.length) otToCfg.forEach(e => toSet.add(e));
-  else if (CFG.top_email) toSet.add(CFG.top_email);
-  else if (OT_TO[0]?.email) toSet.add(OT_TO[0].email);
-
-  const ccSet2 = new Set();
-  if (SESSION.email) ccSet2.add(SESSION.email);
-  if (CFG.hr_email)  ccSet2.add(CFG.hr_email);
-  OT_CC_FIXED.forEach(c=>{ if(c.email) ccSet2.add(c.email); });
-  toSet.forEach(e=>ccSet2.delete(e));
+  // 加班收件人：To = 一線主管 + 上層主管 + 最高主管；Cc = 人資 + 員工本人 + 代理人
+  const { toSet, ccSet } = buildRecipients(SESSION.emp_id, { includeTop: true });
 
   const toArr = [...toSet];
-  const ccArr = [...ccSet2];
+  const ccArr = [...ccSet];
   const toNames2 = toArr.map(e=>{ const emp=EMP_LIST.find(x=>x.email===e); return emp?emp.name:e; });
   const ccNames2 = ccArr.map(e=>{ const emp=EMP_LIST.find(x=>x.email===e); return emp?emp.name:e; });
 
@@ -2949,6 +2897,7 @@ async function loadCfg() {
   container.innerHTML = '';
 
   const CFG_META = [
+    { key:'hr_email', label:'人資 Email', desc:'請假/加班通知固定副件（所有申請都會 Cc）', type:'text' },
     { key:'work_start',  label:'上班時間', desc:'每天正式上班時間', type:'time' },
     { key:'work_end',    label:'下班時間', desc:'每天正式下班時間', type:'time' },
     { key:'lunch_start', label:'午休開始', desc:'午休開始時間（不計入請假/加班時數）', type:'time' },
@@ -2986,7 +2935,7 @@ async function loadCfg() {
 
 async function saveCfg() {
   const params = { action:'saveConfig' };
-  ['work_start','work_end','lunch_start','lunch_end','dinner_start','dinner_end','min_leave_unit','min_ot_unit','annual_leave_cycle','ot_to_comp_ratio']
+  ['hr_email','work_start','work_end','lunch_start','lunch_end','dinner_start','dinner_end','min_leave_unit','min_ot_unit','annual_leave_cycle','ot_to_comp_ratio']
     .forEach(k => { const el=$(`cfg_${k}`); if(el) params[k]=el.value; });
   const res = await api(params);
   if (res.success) CFG = {...CFG, ...params}; // 更新本地 CFG
@@ -3078,8 +3027,9 @@ function openMailModal(m, context) {
   if (otStatus) otStatus.style.display = 'none';
   $('modal_mail_title').textContent = context === 'leave' ? '📧 請假申請 — 預覽與寄出' : '📧 加班申請 — 預覽與寄出';
   $('mail_subject').value = m.subject || '';
-  $('mail_to').value      = m.toEmails || '';
-  $('mail_cc').value      = m.ccEmails || '';
+  // 預覽 modal 顯示用分號分隔（對 Outlook 友好），內部傳遞仍用逗號
+  $('mail_to').value = (m.toEmails || '').split(',').map(e=>e.trim()).filter(Boolean).join('; ');
+  $('mail_cc').value = (m.ccEmails || '').split(',').map(e=>e.trim()).filter(Boolean).join('; ');
   $('mail_body').value    = m.body || '';
   $('modal_mail_status').innerHTML = '';
   // 填充員工選擇器（若 EMP_LIST 為空先載入）
@@ -3111,8 +3061,11 @@ function sendViaOutlook() {
   const subject = $('mail_subject').value.trim();
   const body    = $('mail_body').value;
   if (!to) { showStatus('modal_mail_status','請填寫收件人','err'); return; }
-  let href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  if (cc) href += `&cc=${encodeURIComponent(cc)}`;
+  // Outlook mailto 用分號分隔收件人（逗號轉分號）
+  const toOutlook = to.split(/[,;]/).map(e=>e.trim()).filter(Boolean).join(';');
+  const ccOutlook = cc.split(/[,;]/).map(e=>e.trim()).filter(Boolean).join(';');
+  let href = `mailto:${encodeURIComponent(toOutlook)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  if (ccOutlook) href += `&cc=${encodeURIComponent(ccOutlook)}`;
   location.href = href;
   // 同步儲存（取消通知不重複儲存）
   if (_mailContext === 'leave') sendLeave(false);
@@ -3122,8 +3075,9 @@ function sendViaOutlook() {
 }
 
 async function sendViaGmail() {
-  const to      = $('mail_to').value.trim();
-  const cc      = $('mail_cc').value.trim();
+  // 預覽 modal 顯示用分號，GAS API 需要逗號，這裡統一轉換
+  const to = $('mail_to').value.split(/[;,]/).map(e=>e.trim()).filter(Boolean).join(',');
+  const cc = $('mail_cc').value.split(/[;,]/).map(e=>e.trim()).filter(Boolean).join(',');
   const subject = $('mail_subject').value.trim();
   const body    = $('mail_body').value;
   if (!to) { showStatus('modal_mail_status','請填寫收件人','err'); return; }
