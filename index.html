@@ -398,7 +398,8 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
           <div class="col-12">
             <div class="actions">
-              <button class="btn btn-primary" onclick="openLeaveMailModal()">✉️ 預覽信件 / 寄出</button>
+              <button class="btn btn-secondary" onclick="openLeaveMailModal('outlook')" style="background:#0072c6;color:#fff;border-color:#0072c6">📨 Outlook 寄出</button>
+              <button class="btn btn-primary" onclick="openLeaveMailModal('gmail')">📧 Gmail 寄出</button>
               <button class="btn btn-secondary" onclick="sendLeave(false)">☁️ 僅儲存（不寄信）</button>
             </div>
             <div id="lv_status"></div>
@@ -483,7 +484,8 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
           <div class="col-12">
             <div class="actions">
-              <button class="btn btn-primary" onclick="openOTMailModal()">✉️ 預覽信件 / 寄出</button>
+              <button class="btn btn-secondary" onclick="openOTMailModal('outlook')" style="background:#0072c6;color:#fff;border-color:#0072c6">📨 Outlook 寄出</button>
+              <button class="btn btn-primary" onclick="openOTMailModal('gmail')">📧 Gmail 寄出</button>
               <button class="btn btn-secondary" onclick="sendOT(false)">☁️ 僅儲存（不寄信）</button>
             </div>
             <div id="ot_status"></div>
@@ -1545,7 +1547,7 @@ function findManagerChain(empId) {
 }
 
 // 組建收件人 Set（去重），回傳 { toSet, ccSet }
-function buildRecipients(empId, { includeTop=false, extraCcEmails=[] } = {}) {
+function buildRecipients(empId, { includeTop=false, extraCcEmails=[], agentEmail='' } = {}) {
   const { me, supervisor, upper, tops } = findManagerChain(empId);
 
   const toSet = new Set();
@@ -1562,7 +1564,7 @@ function buildRecipients(empId, { includeTop=false, extraCcEmails=[] } = {}) {
   if (me.email || SESSION.email) ccSet.add(me.email || SESSION.email);
 
   // 代理人（請假用，需外部傳入）
-  if (options.agentEmail) ccSet.add(options.agentEmail);
+  if (agentEmail) ccSet.add(agentEmail);
 
   // 額外 Cc（個人通知人）
   extraCcEmails.forEach(e => { if (e) ccSet.add(e); });
@@ -3003,33 +3005,38 @@ async function ensureEmpList() {
   }
 }
 
-async function openLeaveMailModal() {
+async function openLeaveMailModal(mailType='gmail') {
   await ensureEmpList();
-  openMailModal(buildLeaveEmail(), 'leave');
+  openMailModal(buildLeaveEmail(), 'leave', mailType);
 }
 
-async function openOTMailModal() {
+async function openOTMailModal(mailType='gmail') {
   await ensureEmpList();
-  // 若 #ot_workers 還沒有列，先建
   if (document.querySelectorAll('#ot_workers .ot-row').length === 0) {
     ot_addWorkerRow({ isApplicant: true });
   }
-  openMailModal(buildOTEmail(), 'ot');
+  openMailModal(buildOTEmail(), 'ot', mailType);
 }
 
-function openMailModal(m, context) {
+// 記錄目前 modal 的寄信類型（'outlook' or 'gmail'）
+let _mailType = 'gmail';
+
+function openMailModal(m, context, mailType='gmail') {
   if (!m) return;
   _mailContext = context; // 'leave', 'ot', 'cancel'
-  // 清除請假/加班表單的狀態訊息
+  _mailType = mailType;
   const lvStatus = document.getElementById('lv_status');
   const otStatus = document.getElementById('ot_status');
   if (lvStatus) lvStatus.style.display = 'none';
   if (otStatus) otStatus.style.display = 'none';
-  $('modal_mail_title').textContent = context === 'leave' ? '📧 請假申請 — 預覽與寄出' : '📧 加班申請 — 預覽與寄出';
+  const typeLabel = mailType === 'outlook' ? 'Outlook' : 'Gmail';
+  const contextLabel = context === 'leave' ? '請假申請' : '加班申請';
+  $('modal_mail_title').textContent = `📧 ${contextLabel} — ${typeLabel} 預覽與寄出`;
   $('mail_subject').value = m.subject || '';
-  // 預覽 modal 顯示用分號分隔（對 Outlook 友好），內部傳遞仍用逗號
-  $('mail_to').value = (m.toEmails || '').split(',').map(e=>e.trim()).filter(Boolean).join('; ');
-  $('mail_cc').value = (m.ccEmails || '').split(',').map(e=>e.trim()).filter(Boolean).join('; ');
+  // Outlook 用分號，Gmail 用逗號
+  const sep = mailType === 'outlook' ? '; ' : ', ';
+  $('mail_to').value = (m.toEmails || '').split(',').map(e=>e.trim()).filter(Boolean).join(sep);
+  $('mail_cc').value = (m.ccEmails || '').split(',').map(e=>e.trim()).filter(Boolean).join(sep);
   $('mail_body').value    = m.body || '';
   $('modal_mail_status').innerHTML = '';
   // 填充員工選擇器（若 EMP_LIST 為空先載入）
@@ -3052,6 +3059,22 @@ function openMailModal(m, context) {
       fillEmpSel();
     });
   } else { fillEmpSel(); }
+  // 根據 mailType 突顯對應按鈕
+  const outlookBtn = $('modal_mail_outlook');
+  const gmailBtn   = $('modal_mail_gmail');
+  if (outlookBtn && gmailBtn) {
+    if (mailType === 'outlook') {
+      outlookBtn.style.fontWeight = 'bold';
+      outlookBtn.style.outline = '2px solid #fff';
+      gmailBtn.style.fontWeight = '';
+      gmailBtn.style.outline = '';
+    } else {
+      gmailBtn.style.fontWeight = 'bold';
+      gmailBtn.style.outline = '2px solid #fff';
+      outlookBtn.style.fontWeight = '';
+      outlookBtn.style.outline = '';
+    }
+  }
   $('modal_mail').classList.add('open');
 }
 
