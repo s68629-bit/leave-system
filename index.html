@@ -957,6 +957,61 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
   </div>
 </div>
 
+
+<!-- ════ 變更請假 Modal ════ -->
+<div class="modal-overlay" id="modal_modify_leave">
+  <div class="modal">
+    <h3>✏️ 變更請假申請</h3>
+    <div style="background:#f0f4f8;border-radius:8px;padding:10px;margin-bottom:14px;font-size:13px;color:var(--muted)">
+      <div>申請人：<b id="ml_name"></b>　日期：<b id="ml_date"></b></div>
+      <div style="margin-top:4px">原始：<span id="ml_orig" style="color:var(--danger);font-weight:600"></span></div>
+    </div>
+    <div class="grid">
+      <div class="col-6 fld">
+        <label>假別</label>
+        <select id="ml_type">
+          <option value="特休">特休</option>
+          <option value="補休">加班/補休</option>
+          <option value="事假">事假</option>
+          <option value="病假">病假</option>
+          <option value="生理假">生理假</option>
+          <option value="家庭照顧假">家庭照顧假</option>
+          <option value="婚假">婚假</option>
+          <option value="喪假">喪假</option>
+          <option value="產假">產假</option>
+          <option value="公假">公假</option>
+        </select>
+      </div>
+      <div class="col-6 fld">
+        <label>時段</label>
+        <select id="ml_period" onchange="onModifyPeriodChange()">
+          <option value="day">以天為單位</option>
+          <option value="am">上半天（08:30–12:00）</option>
+          <option value="pm">下半天（13:00–17:30）</option>
+          <option value="hour">以小時為單位</option>
+        </select>
+      </div>
+      <div class="col-12 fld" id="ml_timeRow" style="display:none">
+        <label>時間</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="time" id="ml_startTime" style="flex:1" onchange="calcModifyHours()"/>
+          <span style="color:var(--muted)">～</span>
+          <input type="time" id="ml_endTime" style="flex:1" onchange="calcModifyHours()"/>
+        </div>
+      </div>
+      <div class="col-6 fld">
+        <label>預計時數</label>
+        <input type="text" id="ml_hours" placeholder="自動計算" style="background:#f8f9fa"/>
+      </div>
+    </div>
+    <div id="modal_modify_err" style="color:var(--danger);font-size:13px;margin-top:8px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="modal_modify_cancel">取消</button>
+      <button class="btn btn-primary" id="modal_modify_ok">✏️ 確認變更</button>
+    </div>
+  </div>
+</div>
+
 <!-- ════ 密碼重設 Modal ════ -->
 <div class="modal-overlay" id="modal_pwd">
   <div class="modal">
@@ -2035,10 +2090,163 @@ async function loadMyLeaves() {
       <td>${r.hours}h</td><td>${r.reason||''}</td>
       <td><span class="tag ${r.status==='cancelled'?'tag-red':'tag-green'}">${r.status==='cancelled'?'已取消':'有效'}</span></td>
       <td style="font-size:12px;color:var(--muted)">${toLocalDate(r.created_at)}</td>
-      <td>${r.status!=='cancelled'?`<button class="btn btn-danger" style="font-size:12px;padding:4px 10px" onclick="cancelLeave('${r.id}',this)">取消</button>`:''}</td>
+      <td style="white-space:nowrap">${r.status!=='cancelled'?`
+        <button class="btn btn-secondary" style="font-size:12px;padding:4px 8px;margin-right:4px" onclick="openModifyLeave('${r.id}','${r.leave_type}','${r.period}','${r.hours}','${toLocalDate(r.start_dt)}','${toLocalDate(r.end_dt)}','${SESSION.name}')">變更</button>
+        <button class="btn btn-danger" style="font-size:12px;padding:4px 8px" onclick="cancelLeave('${r.id}',this)">取消</button>`:''}</td>
     `;
     tbody.appendChild(tr);
   });
+}
+
+
+// ════ 變更請假 ════
+let _modifyLeaveId = null;
+let _modifyOrigData = {};
+
+function openModifyLeave(leaveId, origType, origPeriod, origHours, startDt, endDt, empName) {
+  _modifyLeaveId = leaveId;
+  _modifyOrigData = { type: origType, period: origPeriod, hours: origHours, startDt, endDt, empName };
+
+  $('ml_name').textContent = empName;
+  $('ml_date').textContent = startDt + (startDt !== endDt ? ' ～ ' + endDt : '');
+  $('ml_orig').textContent = origType + '　' + { day:'全天', am:'上半天', pm:'下半天', hour:'小時制' }[origPeriod] + '　' + origHours + 'h';
+
+  $('ml_type').value   = origType;
+  $('ml_period').value = origPeriod;
+  $('ml_hours').value  = origHours;
+  $('modal_modify_err').textContent = '';
+
+  onModifyPeriodChange();
+  $('modal_modify_leave').classList.add('open');
+}
+
+function onModifyPeriodChange() {
+  const period = $('ml_period').value;
+  const timeRow = $('ml_timeRow');
+  if (period === 'hour') {
+    timeRow.style.display = '';
+    $('ml_startTime').value = CFG.work_start || '08:30';
+    $('ml_endTime').value   = CFG.work_end   || '17:30';
+    calcModifyHours();
+  } else {
+    timeRow.style.display = 'none';
+    const cfg = {
+      work_start: CFG.work_start || '08:30',
+      work_end:   CFG.work_end   || '17:30',
+      lunch_start: CFG.lunch_start || '12:00',
+      lunch_end:   CFG.lunch_end   || '13:00',
+    };
+    // 計算天數
+    const start = new Date(_modifyOrigData.startDt);
+    const end   = new Date(_modifyOrigData.endDt);
+    const days  = Math.round((end - start) / 86400000) + 1;
+    const dayH  = period === 'am' ? 3.5 : period === 'pm' ? 4.5 : 8;
+    $('ml_hours').value = (dayH * days).toFixed(1).replace(/\.0$/, '');
+  }
+}
+
+function calcModifyHours() {
+  const s = $('ml_startTime').value;
+  const e = $('ml_endTime').value;
+  if (!s || !e) return;
+  const toMin = t => { const p = t.split(':'); return parseInt(p[0])*60+parseInt(p[1]); };
+  const lunchS = toMin(CFG.lunch_start || '12:00');
+  const lunchE = toMin(CFG.lunch_end   || '13:00');
+  const sMin = toMin(s), eMin = toMin(e);
+  if (eMin <= sMin) { $('ml_hours').value = '0'; return; }
+  let mins = eMin - sMin;
+  mins -= Math.max(0, Math.min(eMin, lunchE) - Math.max(sMin, lunchS));
+  if (mins < 0) mins = 0;
+  const days = Math.round((new Date(_modifyOrigData.endDt) - new Date(_modifyOrigData.startDt)) / 86400000) + 1;
+  $('ml_hours').value = ((mins / 60) * days).toFixed(1).replace(/\.0$/, '');
+}
+
+async function submitModifyLeave() {
+  const newType   = $('ml_type').value;
+  const newPeriod = $('ml_period').value;
+  const newHours  = parseFloat($('ml_hours').value);
+  $('modal_modify_err').textContent = '';
+
+  if (isNaN(newHours) || newHours <= 0) {
+    $('modal_modify_err').textContent = '時數無效，請重新輸入';
+    return;
+  }
+
+  const btn = $('modal_modify_ok');
+  btn.disabled = true;
+  btn.textContent = '處理中...';
+
+  const params = {
+    action: 'modifyLeave',
+    leave_id: _modifyLeaveId,
+    new_leave_type: newType,
+    new_period: newPeriod,
+    new_hours: String(newHours),
+  };
+  if (newPeriod === 'hour') {
+    params.start_time = $('ml_startTime').value;
+    params.end_time   = $('ml_endTime').value;
+  }
+
+  const res = await api(params);
+  btn.disabled = false;
+  btn.textContent = '✏️ 確認變更';
+
+  if (!res.success) {
+    $('modal_modify_err').textContent = '❌ ' + res.message;
+    return;
+  }
+
+  $('modal_modify_leave').classList.remove('open');
+
+  // 重新載入記錄
+  if (typeof loadMyLeaves === 'function') { loadMyLeaves(); loadBalance('bal_cards'); }
+  if (typeof loadMgrLeaves === 'function') loadMgrLeaves();
+
+  // 開啟變更通知 mail
+  const od = res.data.oldLeave;
+  const nd = res.data.newLeave;
+  const empName = _modifyOrigData.empName;
+  const changed = [];
+  if (od.leave_type !== nd.leave_type) changed.push(`假別：${od.leave_type} → ${nd.leave_type}`);
+  if (od.period !== nd.period) {
+    const pLabel = { day:'全天', am:'上半天', pm:'下半天', hour:'小時制' };
+    changed.push(`時段：${pLabel[od.period]||od.period} → ${pLabel[nd.period]||nd.period}`);
+  }
+  if (String(od.hours) !== String(nd.hours)) changed.push(`時數：${od.hours}h → ${nd.hours}h`);
+
+  const body = [
+    '【變更通知】請假申請已變更',
+    '',
+    `申請人：${empName}`,
+    `日　期：${nd.start_dt}${nd.start_dt !== nd.end_dt ? ' ～ ' + nd.end_dt : ''}`,
+    '',
+    '【變更內容】',
+    ...changed,
+    '',
+    `變更後假別：${nd.leave_type}`,
+    `變更後時段：${{ day:'全天', am:'上半天', pm:'下半天', hour:'小時制' }[nd.period]||nd.period}`,
+    `變更後時數：${nd.hours} 小時`,
+    '',
+    '（本信由請假系統產生）'
+  ].join('\n');
+
+  // 收件人與請假申請相同邏輯
+  await ensureEmpList();
+  const isMultiDay = nd.start_dt !== nd.end_dt;
+  const targetEmp = EMP_LIST.find(e => e.name === empName) || {};
+  const { toSet, ccSet } = buildRecipients(targetEmp.emp_id || SESSION.emp_id, { includeTop: isMultiDay });
+  const toArr = [...toSet];
+  const ccArr = [...ccSet];
+
+  openMailModal({
+    subject: `【變更通知】${empName} ${od.leave_type} → ${nd.leave_type} ${nd.start_dt}`,
+    toEmails: toArr.join(','),
+    ccEmails: ccArr.join(','),
+    toTxt: toArr.map(e=>{ const emp=EMP_LIST.find(x=>x.email===e); return emp?emp.name:e; }).join('、'),
+    ccTxt: ccArr.map(e=>{ const emp=EMP_LIST.find(x=>x.email===e); return emp?emp.name:e; }).join('、'),
+    body
+  }, 'cancel');
 }
 
 async function cancelLeave(id, btn) {
@@ -2309,8 +2517,12 @@ async function loadMgrLeaves() {
   visibleRows.forEach(r => {
     const tr = document.createElement('tr');
     const actionCell = showAction
-      ? `<td><button class="btn btn-danger" style="font-size:12px;padding:4px 10px"
-           onclick="mgrCancelLeave('${r.id}','${r.name}','${r.leave_type}','${toLocalDate(r.start_dt)}')">取消</button></td>`
+      ? `<td style="white-space:nowrap">
+           <button class="btn btn-secondary" style="font-size:12px;padding:4px 8px;margin-right:4px"
+             onclick="openModifyLeave('${r.id}','${r.leave_type}','${r.period}','${r.hours}','${toLocalDate(r.start_dt)}','${toLocalDate(r.end_dt)}','${r.name}')">變更</button>
+           <button class="btn btn-danger" style="font-size:12px;padding:4px 8px"
+             onclick="mgrCancelLeave('${r.id}','${r.name}','${r.leave_type}','${toLocalDate(r.start_dt)}')">取消</button>
+         </td>`
       : '';
     tr.innerHTML = `
       <td>${r.name||''}</td><td>${r.dept||''}</td>
@@ -3179,6 +3391,8 @@ async function sendViaGmail() {
 }
 
 $('modal_mail_cancel').onclick = () => $('modal_mail').classList.remove('open');
+  $('modal_modify_cancel').onclick = () => $('modal_modify_leave').classList.remove('open');
+  $('modal_modify_ok').onclick = submitModifyLeave;
 
 // ════ 加班預設情境 ════
 // 重新整理所有加班人員的下拉選單（EMP_LIST 異步載完後呼叫）
