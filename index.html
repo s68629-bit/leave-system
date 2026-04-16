@@ -4,8 +4,8 @@
 <meta charset="utf-8"/>
 <!-- ╔══════════════════════════════════════════════════════╗
      ║  東立材料 請假加班系統                                ║
-     ║  版本：index_v69  |  更新：2026-04-16               ║
-     ║  變更：Tony Material logo、登入頁英文修正    ║
+     ║  版本：index_v70  |  更新：2026-04-16               ║
+     ║  變更：非配額假別記錄已請時數、字體自動調整    ║
      ╚══════════════════════════════════════════════════════╝ -->
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>東立材料 請假加班系統</title>
@@ -838,7 +838,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
   </div><!-- /main-wrap -->
 </div><!-- /appScreen -->
 <div id="version_tag" style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,0.35);pointer-events:none;z-index:9999;letter-spacing:0.5px">
-  v69 · 2026-04-16
+  v70 · 2026-04-16
 </div>
 
 <!-- ════ 可編輯預覽寄信 Modal ════ -->
@@ -2412,11 +2412,11 @@ function renderBalCards(container, data, mini=false) {
     const used    = parseFloat(b.used_hours) || 0;
     const adjust  = parseFloat(b.adjust_hours) || 0;
     const hasQuota = QUOTA_TYPES.includes(b.leave_type);
-    // 顯示名稱轉換（補休 → 加班/補休）
     const displayName = leaveTypeDisplay(b.leave_type);
 
     let cls, mainVal, mainUnit, detail;
     if (hasQuota) {
+      // 特休/補休：顯示可用配額
       const availShow = Math.max(0, avail);
       const pct = total > 0 ? availShow/total : 1;
       cls = pct < 0.2 ? 'low' : (availShow > 0 ? 'ok' : '');
@@ -2424,17 +2424,20 @@ function renderBalCards(container, data, mini=false) {
       mainUnit = '可用';
       detail   = `配額 ${hoursToDisplay(total)}　已用 ${hoursToDisplay(used)}${adjust!==0?`　調整 ${adjust>0?'+':''}${hoursToDisplay(Math.abs(adjust))}`:''}`;
     } else {
+      // 其他假別：顯示已請時數（天+小時格式）
       cls = used > 0 ? '' : 'ok';
       mainVal  = hoursToDisplay(used);
       mainUnit = '已請';
       detail   = used > 0 ? `共請 ${hoursToDisplay(used)}` : '尚未請假';
     }
 
+    // 字體大小依內容長度調整
+    const fontSize = mainVal.length > 8 ? '16px' : mainVal.length > 5 ? '20px' : '26px';
     const c = document.createElement('div');
     c.className = `bal-card ${cls}`;
     c.innerHTML = `
       <div class="bal-type">${displayName}</div>
-      <div class="bal-val" style="font-size:${mainVal.length>6?'18px':'26px'}">${mainVal}</div>
+      <div class="bal-val" style="font-size:${fontSize}">${mainVal}</div>
       <div class="bal-unit">${mainUnit}</div>
       <div class="bal-detail">${detail}</div>
     `;
