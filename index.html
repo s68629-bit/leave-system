@@ -4,8 +4,8 @@
 <meta charset="utf-8"/>
 <!-- ╔══════════════════════════════════════════════════════╗
      ║  東立材料 請假加班系統                                ║
-     ║  版本：index_v70  |  更新：2026-04-16               ║
-     ║  變更：非配額假別記錄已請時數、字體自動調整    ║
+     ║  版本：index_v71  |  更新：2026-04-17               ║
+     ║  變更：假別原因連動（選假別自動同步可用原因）  ║
      ╚══════════════════════════════════════════════════════╝ -->
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>東立材料 請假加班系統</title>
@@ -382,16 +382,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
           <div class="col-12 fld">
             <label>原因</label>
             <select id="lv_reason">
-              <option value="特休">特休</option>
-              <option value="私事處理">私事處理</option>
-              <option value="病假">病假</option>
-              <option value="生理假">生理假</option>
-              <option value="婚假">婚假</option>
-              <option value="產假">產假</option>
-              <option value="喪假">喪假</option>
-              <option value="公假">公假</option>
-              <option value="家庭照顧假">家庭照顧假</option>
-              <option value="__custom">其他（自訂）</option>
+              <!-- 選項由 syncReasonOptions() 動態產生，跟隨假別自動連動 -->
             </select>
             <textarea id="lv_reasonCustom" placeholder="請輸入原因" style="display:none;margin-top:6px"></textarea>
           </div>
@@ -1443,15 +1434,34 @@ function initLeaveForm() {
   ['lv_startDate','lv_endDate','lv_startTime','lv_endTime'].forEach(id=>{
     $(id).onchange = calcLeaveHours;
   });
-  $('lv_type').onchange = () => {
-    const map = {'特休':'特休','補休':'補休','事假':'私事處理','病假':'病假',
-      '生理假':'生理假','家庭照顧假':'家庭照顧假','婚假':'婚假','喪假':'喪假','產假':'產假','公假':'公假'};
-    const r = $('lv_reason');
-    r.value = map[$('lv_type').value] || '私事處理';
+  // 假別 → 可用原因清單（每種假別只開放合理的原因）
+  const LEAVE_REASON_MAP = {
+    '特休':       [['特休',       '特休休假']],
+    '補休':       [['補休',       '加班補休']],
+    '事假':       [['私事處理',   '私事處理'], ['家庭因素', '家庭因素'], ['__custom', '其他（自訂）']],
+    '病假':       [['病假',       '就醫/身體不適'], ['__custom', '其他（自訂）']],
+    '生理假':     [['生理假',     '生理假']],
+    '家庭照顧假': [['家庭照顧假', '家庭照顧假']],
+    '婚假':       [['婚假',       '結婚']],
+    '喪假':       [['喪假',       '喪假']],
+    '產假':       [['產假',       '產假']],
+    '公假':       [['公假',       '公務/教育訓練'], ['__custom', '其他（自訂）']],
   };
+
+  function syncReasonOptions() {
+    const type = $('lv_type').value;
+    const r = $('lv_reason');
+    const opts = LEAVE_REASON_MAP[type] || [['__custom', '其他（自訂）']];
+    r.innerHTML = opts.map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
+    r.value = opts[0][0];
+    $('lv_reasonCustom').style.display = r.value === '__custom' ? '' : 'none';
+  }
+
+  $('lv_type').onchange = syncReasonOptions;
   $('lv_reason').onchange = () => {
     $('lv_reasonCustom').style.display = $('lv_reason').value === '__custom' ? '' : 'none';
   };
+  syncReasonOptions(); // 頁面載入時初始化一次
 
   $('lv_startDate').value = todayStr();
   $('lv_endDate').value   = todayStr();
@@ -1701,8 +1711,7 @@ function resetLeaveForm() {
   $('lv_period').value    = 'day';
   $('lv_timeRow').style.display = 'none';
   $('lv_hours').value = '';
-  $('lv_reason').value = '特休';
-  $('lv_reasonCustom').style.display = 'none';
+  syncReasonOptions();
   $('lv_reasonCustom').value = '';
   $('lv_note').value = '';
   $('lv_preview').style.display = 'none';
