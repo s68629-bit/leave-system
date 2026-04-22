@@ -4,12 +4,23 @@
 <meta charset="utf-8"/>
 <!-- ╔══════════════════════════════════════════════════════╗
      ║  東立材料 請假加班系統                                ║
-     ║  版本：index_v71  |  更新：2026-04-17               ║
-     ║  變更：假別原因連動（選假別自動同步可用原因）  ║
+     ║  版本：index_v71  |  更新：2026-04-16               ║
+     ║  變更：新增泰文雙語介面    ║
      ╚══════════════════════════════════════════════════════╝ -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>東立材料 請假加班系統</title>
 <style>
+
+/* ── 泰文雙語樣式 ── */
+.th { display:block; font-size:10px; color:var(--muted); line-height:1.3; margin-top:1px; font-family:'Sarabun','Noto Sans Thai',sans-serif; }
+.th-inline { font-size:10px; color:var(--muted); margin-left:4px; font-family:'Sarabun','Noto Sans Thai',sans-serif; }
+label .th { font-weight:normal; }
+th .th { font-weight:normal; opacity:0.8; }
+.tab .th { font-size:9px; }
+.bal-type .th { font-size:9px; margin-top:2px; }
+.tag .th { display:none; } /* tag 內不顯示 */
 /* ── 設計主題：工業精簡風，深藍主色 ─────────────────── */
 :root {
   --primary: #1e3a5f;
@@ -259,12 +270,12 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
       <div class="sub">請假 ・ 加班管理系統</div>
     </div>
     <div class="login-field">
-      <label>工號</label>
-      <input type="text" id="li_empId" placeholder="請輸入工號" autocomplete="username"/>
+      <label>工號<span class="th">รหัสพนักงาน</span></label>
+      <input type="text" id="li_empId" placeholder="รหัสพนักงาน" autocomplete="username"/>
     </div>
     <div class="login-field">
-      <label>密碼</label>
-      <input type="password" id="li_pwd" placeholder="請輸入密碼" autocomplete="current-password"/>
+      <label>密碼<span class="th">รหัสผ่าน</span></label>
+      <input type="password" id="li_pwd" placeholder="รหัสผ่าน" autocomplete="current-password"/>
     </div>
     <button class="login-btn" id="li_btn">登 入</button>
     <div class="login-err" id="li_err"></div>
@@ -290,10 +301,10 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
   <!-- Tab 列 -->
   <div class="tabs-bar">
-    <button class="tab-btn active" data-tab="leave">📝 請假申請</button>
-    <button class="tab-btn" data-tab="ot">⏰ 加班申請</button>
-    <button class="tab-btn" data-tab="myrecord">📅 我的記錄</button>
-    <button class="tab-btn" data-tab="balance">💰 我的餘額</button>
+    <button class="tab-btn active" data-tab="leave">📝 請假申請<span class="th">ใบลา</span></button>
+    <button class="tab-btn" data-tab="ot">⏰ 加班申請<span class="th">ทำงานล่วงเวลา</span></button>
+    <button class="tab-btn" data-tab="myrecord">📅 我的記錄<span class="th">ประวัติของฉัน</span></button>
+    <button class="tab-btn" data-tab="balance">💰 我的餘額<span class="th">วันลาคงเหลือ</span></button>
     <button class="tab-btn" data-tab="mgr" id="tab_mgr" style="display:none">👔 主管總覽</button>
     <button class="tab-btn" data-tab="admin" id="tab_admin" style="display:none">⚙️ 管理後台</button>
   </div>
@@ -303,66 +314,66 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
     <!-- ═══ 請假申請 ═══ -->
     <div class="pane active" id="pane_leave">
       <div class="card">
-        <div class="card-title"><span class="icon">📝</span>請假申請</div>
+        <div class="card-title"><span class="icon">📝</span>請假申請<span class="th-inline">ใบลา</span></div>
         <!-- 餘額快覽 -->
         <div class="balance-grid" id="lv_balSummary"></div>
 
         <div class="grid">
           <div class="col-4 fld">
-            <label>申請人</label>
+            <label>申請人<span class="th">ผู้ยื่นคำขอ</span></label>
             <input type="text" id="lv_name" readonly/>
           </div>
           <div class="col-4 fld">
-            <label>工號</label>
+            <label>工號<span class="th">รหัสพนักงาน</span></label>
             <input type="text" id="lv_empId" readonly/>
           </div>
           <div class="col-4 fld">
-            <label>部門</label>
+            <label>部門<span class="th">แผนก</span></label>
             <input type="text" id="lv_dept" readonly/>
           </div>
 
           <div class="col-4 fld">
-            <label>假別</label>
+            <label>假別<span class="th">ประเภทการลา</span></label>
             <select id="lv_type">
-              <option value="特休">特休</option>
-              <option value="補休">加班/補休</option>
-              <option value="事假">事假</option>
-              <option value="病假">病假</option>
-              <option value="生理假">生理假</option>
-              <option value="家庭照顧假">家庭照顧假</option>
-              <option value="婚假">婚假</option>
-              <option value="喪假">喪假</option>
-              <option value="產假">產假</option>
-              <option value="公假">公假</option>
+              <option value="特休">特休 / วันหยุดพักร้อน</option>
+              <option value="補休">加班/補休 / ชดเชยโอที</option>
+              <option value="事假">事假 / ลากิจ</option>
+              <option value="病假">病假 / ลาป่วย</option>
+              <option value="生理假">生理假 / ลาประจำเดือน</option>
+              <option value="家庭照顧假">家庭照顧假 / ลาดูแลครอบครัว</option>
+              <option value="婚假">婚假 / ลาแต่งงาน</option>
+              <option value="喪假">喪假 / ลางานศพ</option>
+              <option value="產假">產假 / ลาคลอด</option>
+              <option value="公假">公假 / ลากิจราชการ</option>
             </select>
           </div>
           <div class="col-4 fld">
-            <label>填寫日期</label>
+            <label>填寫日期<span class="th">วันที่กรอก</span></label>
             <input type="date" id="lv_applyDate"/>
           </div>
           <div class="col-4 fld">
-            <label>代理人</label>
+            <label>代理人<span class="th">ผู้แทน</span></label>
             <select id="lv_agent">
               <option value="">（不指定）</option>
             </select>
           </div>
 
           <div class="col-6 fld">
-            <label>請假日期（起）</label>
+            <label>請假日期（起）<span class="th">วันที่เริ่มลา</span></label>
             <input type="date" id="lv_startDate"/>
           </div>
           <div class="col-6 fld">
-            <label>請假日期（迄）</label>
+            <label>請假日期（迄）<span class="th">วันที่สิ้นสุด</span></label>
             <input type="date" id="lv_endDate"/>
           </div>
 
           <div class="col-6 fld">
-            <label>時段</label>
+            <label>時段<span class="th">ช่วงเวลา</span></label>
             <select id="lv_period">
-              <option value="day">以天為單位</option>
-              <option value="am">上半天（08:30–12:00）</option>
-              <option value="pm">下半天（13:00–17:30）</option>
-              <option value="hour">以小時為單位</option>
+              <option value="day">以天為單位 / เต็มวัน</option>
+              <option value="am">上半天 / ครึ่งวันเช้า (08:30–12:00)</option>
+              <option value="pm">下半天 / ครึ่งวันบ่าย (13:00–17:30)</option>
+              <option value="hour">以小時為單位 / เป็นชั่วโมง</option>
             </select>
           </div>
           <div class="col-6 fld" id="lv_timeRow" style="display:none">
@@ -375,20 +386,29 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
           </div>
 
           <div class="col-6 fld">
-            <label>預計時數</label>
+            <label>預計時數<span class="th">จำนวนชั่วโมง</span></label>
             <input type="text" id="lv_hours" readonly placeholder="自動計算"/>
           </div>
 
           <div class="col-12 fld">
-            <label>原因</label>
+            <label>原因<span class="th">เหตุผล</span></label>
             <select id="lv_reason">
-              <!-- 選項由 syncReasonOptions() 動態產生，跟隨假別自動連動 -->
+              <option value="特休">特休 / วันหยุดพักร้อน</option>
+              <option value="私事處理">私事處理</option>
+              <option value="病假">病假 / ลาป่วย</option>
+              <option value="生理假">生理假 / ลาประจำเดือน</option>
+              <option value="婚假">婚假 / ลาแต่งงาน</option>
+              <option value="產假">產假 / ลาคลอด</option>
+              <option value="喪假">喪假 / ลางานศพ</option>
+              <option value="公假">公假 / ลากิจราชการ</option>
+              <option value="家庭照顧假">家庭照顧假 / ลาดูแลครอบครัว</option>
+              <option value="__custom">其他（自訂）</option>
             </select>
             <textarea id="lv_reasonCustom" placeholder="請輸入原因" style="display:none;margin-top:6px"></textarea>
           </div>
 
           <div class="col-12 fld">
-            <label>備註</label>
+            <label>備註<span class="th">หมายเหตุ</span></label>
             <textarea id="lv_note" placeholder="補充資訊（選填）"></textarea>
           </div>
 
@@ -421,7 +441,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
     <!-- ═══ 加班申請 ═══ -->
     <div class="pane" id="pane_ot">
       <div class="card">
-        <div class="card-title"><span class="icon">⏰</span>加班申請</div>
+        <div class="card-title"><span class="icon">⏰</span>加班申請<span class="th-inline">ทำงานล่วงเวลา</span></div>
         <div class="grid">
           <div class="col-4 fld">
             <label>申請人</label>
@@ -441,7 +461,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
             <input type="date" id="ot_applyDate"/>
           </div>
           <div class="col-4 fld">
-            <label>加班日期</label>
+            <label>加班日期<span class="th">วันที่ทำโอที</span></label>
             <input type="date" id="ot_date"/>
           </div>
           <!-- 加班類別移至加班人員列 -->
@@ -474,7 +494,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
           </div>
 
           <div class="col-12 fld">
-            <label>備註 <span style="font-size:11px;color:var(--muted)">（可手動修改）</span></label>
+            <label>備註<span class="th">หมายเหตุ</span> <span style="font-size:11px;color:var(--muted)">（可手動修改）</span></label>
             <textarea id="ot_note" placeholder="工作內容、工單號等（選填）"></textarea>
           </div>
 
@@ -494,7 +514,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
     <!-- ═══ 我的記錄 ═══ -->
     <div class="pane" id="pane_myrecord">
       <div class="card">
-        <div class="card-title"><span class="icon">📅</span>我的請假記錄</div>
+        <div class="card-title"><span class="icon">📅</span>我的請假記錄<span class="th-inline">ประวัติการลา</span></div>
         <div class="toolbar">
           <input type="month" id="rec_month" onchange="loadMyLeaves()"/>
           <select id="rec_status" onchange="loadMyLeaves()">
@@ -507,16 +527,16 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
         <div class="tbl-wrap">
           <table id="rec_tbl">
             <thead>
-              <tr><th>假別</th><th>日期（起）</th><th>日期（迄）</th><th>時數</th><th>原因</th><th>狀態</th><th>申請時間</th><th>操作</th></tr>
+              <tr><th>假別<br><span class="th">ประเภท</span></th><th>日期（起）<br><span class="th">วันเริ่ม</span></th><th>日期（迄）<br><span class="th">วันสิ้นสุด</span></th><th>時數<br><span class="th">ชั่วโมง</span></th><th>原因<br><span class="th">เหตุผล</span></th><th>狀態<br><span class="th">สถานะ</span></th><th>申請時間<br><span class="th">เวลายื่น</span></th><th>操作<br><span class="th">จัดการ</span></th></tr>
             </thead>
             <tbody id="rec_tbody"></tbody>
           </table>
         </div>
-        <div id="rec_empty" class="loading" style="display:none">查無資料</div>
+        <div id="rec_empty" class="loading" style="display:none">查無資料 / ไม่พบข้อมูล</div>
       </div>
 
       <div class="card">
-        <div class="card-title"><span class="icon">⏰</span>我的加班記錄</div>
+        <div class="card-title"><span class="icon">⏰</span>我的加班記錄<span class="th-inline">ประวัติโอที</span></div>
         <div class="toolbar">
           <input type="month" id="otrec_month" onchange="loadMyOT()"/>
           <select id="otrec_status" onchange="loadMyOT()">
@@ -529,12 +549,12 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
         <div class="tbl-wrap">
           <table id="otrec_tbl">
             <thead>
-              <tr><th>加班日期</th><th>加班類別</th><th>時間</th><th>時數</th><th>狀態</th><th>操作</th></tr>
+              <tr><th>加班日期<br><span class="th">วันที่โอที</span></th><th>加班類別<br><span class="th">ประเภท</span></th><th>時間<br><span class="th">เวลา</span></th><th>時數<br><span class="th">ชั่วโมง</span></th><th>狀態<br><span class="th">สถานะ</span></th><th>操作<br><span class="th">จัดการ</span></th></tr>
             </thead>
             <tbody id="otrec_tbody"></tbody>
           </table>
         </div>
-        <div id="otrec_empty" class="loading" style="display:none">查無資料</div>
+        <div id="otrec_empty" class="loading" style="display:none">查無資料 / ไม่พบข้อมูล</div>
       </div>
     </div>
 
@@ -560,8 +580,8 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
           </select>
           <select id="mgr_type">
             <option value="">全部假別</option>
-            <option value="特休">特休</option><option value="補休">加班/補休</option>
-            <option value="事假">事假</option><option value="病假">病假</option>
+            <option value="特休">特休 / วันหยุดพักร้อน</option><option value="補休">加班/補休 / ชดเชยโอที</option>
+            <option value="事假">事假 / ลากิจ</option><option value="病假">病假 / ลาป่วย</option>
           </select>
           <button class="btn btn-secondary" id="mgr_load" onclick="loadMgrLeaves()">🔍 查詢</button>
           <button class="btn btn-ok" id="mgr_export" onclick="exportExcel()">📥 匯出 Excel</button>
@@ -574,7 +594,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
             <tbody id="mgr_tbody"></tbody>
           </table>
         </div>
-        <div id="mgr_empty" class="loading" style="display:none">查無資料</div>
+        <div id="mgr_empty" class="loading" style="display:none">查無資料 / ไม่พบข้อมูล</div>
       </div>
 
       <!-- 餘額報表 -->
@@ -666,9 +686,9 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
             <div class="fld">
               <label>假別</label>
               <select id="adj_type" style="width:100%">
-                <option value="特休">特休</option><option value="補休">加班/補休</option>
-                <option value="事假">事假</option><option value="病假">病假</option>
-                <option value="生理假">生理假</option><option value="家庭照顧假">家庭照顧假</option>
+                <option value="特休">特休 / วันหยุดพักร้อน</option><option value="補休">加班/補休 / ชดเชยโอที</option>
+                <option value="事假">事假 / ลากิจ</option><option value="病假">病假 / ลาป่วย</option>
+                <option value="生理假">生理假 / ลาประจำเดือน</option><option value="家庭照顧假">家庭照顧假 / ลาดูแลครอบครัว</option>
               </select>
             </div>
             <div class="fld">
@@ -829,7 +849,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
   </div><!-- /main-wrap -->
 </div><!-- /appScreen -->
 <div id="version_tag" style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,0.35);pointer-events:none;z-index:9999;letter-spacing:0.5px">
-  v70 · 2026-04-16
+  v71 · 2026-04-16
 </div>
 
 <!-- ════ 可編輯預覽寄信 Modal ════ -->
@@ -969,25 +989,25 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
       <div class="col-6 fld">
         <label>假別</label>
         <select id="ml_type">
-          <option value="特休">特休</option>
-          <option value="補休">加班/補休</option>
-          <option value="事假">事假</option>
-          <option value="病假">病假</option>
-          <option value="生理假">生理假</option>
-          <option value="家庭照顧假">家庭照顧假</option>
-          <option value="婚假">婚假</option>
-          <option value="喪假">喪假</option>
-          <option value="產假">產假</option>
-          <option value="公假">公假</option>
+          <option value="特休">特休 / วันหยุดพักร้อน</option>
+          <option value="補休">加班/補休 / ชดเชยโอที</option>
+          <option value="事假">事假 / ลากิจ</option>
+          <option value="病假">病假 / ลาป่วย</option>
+          <option value="生理假">生理假 / ลาประจำเดือน</option>
+          <option value="家庭照顧假">家庭照顧假 / ลาดูแลครอบครัว</option>
+          <option value="婚假">婚假 / ลาแต่งงาน</option>
+          <option value="喪假">喪假 / ลางานศพ</option>
+          <option value="產假">產假 / ลาคลอด</option>
+          <option value="公假">公假 / ลากิจราชการ</option>
         </select>
       </div>
       <div class="col-6 fld">
         <label>時段</label>
         <select id="ml_period" onchange="onModifyPeriodChange()">
-          <option value="day">以天為單位</option>
-          <option value="am">上半天（08:30–12:00）</option>
-          <option value="pm">下半天（13:00–17:30）</option>
-          <option value="hour">以小時為單位</option>
+          <option value="day">以天為單位 / เต็มวัน</option>
+          <option value="am">上半天 / ครึ่งวันเช้า (08:30–12:00)</option>
+          <option value="pm">下半天 / ครึ่งวันบ่าย (13:00–17:30)</option>
+          <option value="hour">以小時為單位 / เป็นชั่วโมง</option>
         </select>
       </div>
       <div class="col-12 fld" id="ml_timeRow" style="display:none">
@@ -1150,9 +1170,24 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 const pad2 = n => String(n).padStart(2,'0');
 // 假別顯示名稱轉換（資料庫存原始名稱，前端顯示時轉換）
+// 假別泰文對照
+const LEAVE_TYPE_THAI = {
+  '特休': 'วันหยุดพักร้อน',
+  '補休': 'ชดเชยโอที',
+  '事假': 'ลากิจ',
+  '病假': 'ลาป่วย',
+  '生理假': 'ลาประจำเดือน',
+  '家庭照顧假': 'ลาดูแลครอบครัว',
+  '婚假': 'ลาแต่งงาน',
+  '喪假': 'ลางานศพ',
+  '產假': 'ลาคลอด',
+  '公假': 'ลากิจราชการ',
+};
 function leaveTypeDisplay(type) {
-  const map = { '補休': '加班/補休' };
-  return map[type] || type;
+  const zh = { '補休': '加班/補休' }[type] || type;
+  const thai = LEAVE_TYPE_THAI[type] || '';
+  if (thai) return zh + '<span class="th">' + thai + '</span>';
+  return zh;
 }
 // 時數轉「X天X小時」顯示
 function hoursToDisplay(h) {
@@ -1434,34 +1469,15 @@ function initLeaveForm() {
   ['lv_startDate','lv_endDate','lv_startTime','lv_endTime'].forEach(id=>{
     $(id).onchange = calcLeaveHours;
   });
-  // 假別 → 可用原因清單（每種假別只開放合理的原因）
-  const LEAVE_REASON_MAP = {
-    '特休':       [['特休',       '特休休假']],
-    '補休':       [['補休',       '加班補休']],
-    '事假':       [['私事處理',   '私事處理'], ['家庭因素', '家庭因素'], ['__custom', '其他（自訂）']],
-    '病假':       [['病假',       '就醫/身體不適'], ['__custom', '其他（自訂）']],
-    '生理假':     [['生理假',     '生理假']],
-    '家庭照顧假': [['家庭照顧假', '家庭照顧假']],
-    '婚假':       [['婚假',       '結婚']],
-    '喪假':       [['喪假',       '喪假']],
-    '產假':       [['產假',       '產假']],
-    '公假':       [['公假',       '公務/教育訓練'], ['__custom', '其他（自訂）']],
-  };
-
-  function syncReasonOptions() {
-    const type = $('lv_type').value;
+  $('lv_type').onchange = () => {
+    const map = {'特休':'特休','補休':'補休','事假':'私事處理','病假':'病假',
+      '生理假':'生理假','家庭照顧假':'家庭照顧假','婚假':'婚假','喪假':'喪假','產假':'產假','公假':'公假'};
     const r = $('lv_reason');
-    const opts = LEAVE_REASON_MAP[type] || [['__custom', '其他（自訂）']];
-    r.innerHTML = opts.map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
-    r.value = opts[0][0];
-    $('lv_reasonCustom').style.display = r.value === '__custom' ? '' : 'none';
-  }
-
-  $('lv_type').onchange = syncReasonOptions;
+    r.value = map[$('lv_type').value] || '私事處理';
+  };
   $('lv_reason').onchange = () => {
     $('lv_reasonCustom').style.display = $('lv_reason').value === '__custom' ? '' : 'none';
   };
-  syncReasonOptions(); // 頁面載入時初始化一次
 
   $('lv_startDate').value = todayStr();
   $('lv_endDate').value   = todayStr();
@@ -1711,7 +1727,8 @@ function resetLeaveForm() {
   $('lv_period').value    = 'day';
   $('lv_timeRow').style.display = 'none';
   $('lv_hours').value = '';
-  syncReasonOptions();
+  $('lv_reason').value = '特休';
+  $('lv_reasonCustom').style.display = 'none';
   $('lv_reasonCustom').value = '';
   $('lv_note').value = '';
   $('lv_preview').style.display = 'none';
@@ -1908,9 +1925,9 @@ function ot_addWorkerRow(opts={}) {
       <div class="fld" style="margin:0">
         <label>加班類別</label>
         <select class="ot-cat" style="width:100%">
-          <option value="平日">平日</option>
+          <option value="平日">平日 / วันธรรมดา</option>
           <option value="例假">例假日</option>
-          <option value="國定">國定假日</option>
+          <option value="國定">วันหยุดนักขัตฤกษ์</option>
         </select>
       </div>
       <div class="fld" style="margin:0">
@@ -2105,7 +2122,7 @@ async function loadMyLeaves() {
       <td><span class="tag ${LEAVE_TYPE_COLORS[r.leave_type]||'tag-gray'}">${r.leave_type}</span></td>
       <td>${toLocalDate(r.start_dt)}</td><td>${toLocalDate(r.end_dt)}</td>
       <td>${r.hours}h</td><td>${r.reason||''}</td>
-      <td><span class="tag ${r.status==='cancelled'?'tag-red':'tag-green'}">${r.status==='cancelled'?'已取消':'有效'}</span></td>
+      <td><span class="tag ${r.status==='cancelled'?'tag-red':'tag-green'}">${r.status==='cancelled'?'已取消 ยกเลิก':'มีผล'}</span></td>
       <td style="font-size:12px;color:var(--muted)">${toLocalDate(r.created_at)}</td>
       <td style="white-space:nowrap">${r.status!=='cancelled'?`
         <button class="btn btn-secondary" style="font-size:12px;padding:4px 8px;margin-right:4px" onclick="openModifyLeave('${r.id}','${r.leave_type}','${r.period}','${r.hours}','${toLocalDate(r.start_dt)}','${toLocalDate(r.end_dt)}','${SESSION.name}')">變更</button>
@@ -2326,7 +2343,7 @@ async function loadMyOT() {
       <td><span class="tag tag-blue">${r.period_type||'平日'}</span></td>
       <td>${r.start_time||'--'}–${r.end_time||'--'}</td>
       <td>${r.hours}h</td>
-      <td><span class="tag ${r.status==='cancelled'?'tag-red':'tag-green'}">${r.status==='cancelled'?'已取消':'有效'}</span></td>
+      <td><span class="tag ${r.status==='cancelled'?'tag-red':'tag-green'}">${r.status==='cancelled'?'已取消 ยกเลิก':'มีผล'}</span></td>
       <td>${r.status!=='cancelled'?`<button class="btn btn-danger" style="font-size:12px;padding:4px 10px" onclick="cancelOT('${r.id}',this)">取消</button>`:''}</td>
     `;
     tbody.appendChild(tr);
@@ -2430,14 +2447,14 @@ function renderBalCards(container, data, mini=false) {
       const pct = total > 0 ? availShow/total : 1;
       cls = pct < 0.2 ? 'low' : (availShow > 0 ? 'ok' : '');
       mainVal  = hoursToDisplay(availShow);
-      mainUnit = '可用';
-      detail   = `配額 ${hoursToDisplay(total)}　已用 ${hoursToDisplay(used)}${adjust!==0?`　調整 ${adjust>0?'+':''}${hoursToDisplay(Math.abs(adjust))}`:''}`;
+      mainUnit = '可用 คงเหลือ';
+      detail   = `配額/โควตา ${hoursToDisplay(total)}　已用 ${hoursToDisplay(used)}${adjust!==0?`　調整 ${adjust>0?'+':''}${hoursToDisplay(Math.abs(adjust))}`:''}`;
     } else {
       // 其他假別：顯示已請時數（天+小時格式）
       cls = used > 0 ? '' : 'ok';
       mainVal  = hoursToDisplay(used);
-      mainUnit = '已請';
-      detail   = used > 0 ? `共請 ${hoursToDisplay(used)}` : '尚未請假';
+      mainUnit = '已請 ใช้แล้ว';
+      detail   = used > 0 ? `共請 ${hoursToDisplay(used)}` : '尚未請假 / ยังไม่ได้ลา';
     }
 
     // 字體大小依內容長度調整
@@ -2550,7 +2567,7 @@ async function loadMgrLeaves() {
       <td>${toLocalDate(r.start_dt)}</td><td>${toLocalDate(r.end_dt)}</td>
       <td>${r.hours}h</td>
       <td>${r.reason||''}</td>
-      <td><span class="tag tag-green">有效</span></td>
+      <td><span class="tag tag-green">มีผล<br><span class="th" style="color:inherit">有效</span></td>
       ${actionCell}`;
     tbody.appendChild(tr);
   });
