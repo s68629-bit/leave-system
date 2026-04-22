@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <!-- ╔══════════════════════════════════════════════════════╗
      ║  東立材料 請假加班系統                                ║
-     ║  版本：index_v71  |  更新：2026-04-16               ║
+     ║  版本：index_v72  |  更新：2026-04-16               ║
      ║  變更：新增泰文雙語介面    ║
      ╚══════════════════════════════════════════════════════╝ -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -444,20 +444,20 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
         <div class="card-title"><span class="icon">⏰</span>加班申請<span class="th-inline">ทำงานล่วงเวลา</span></div>
         <div class="grid">
           <div class="col-4 fld">
-            <label>申請人</label>
+            <label>申請人<span class="th">ผู้ยื่นคำขอ</span></label>
             <input type="text" id="ot_name" readonly/>
           </div>
           <div class="col-4 fld">
-            <label>工號</label>
+            <label>工號<span class="th">รหัสพนักงาน</span></label>
             <input type="text" id="ot_empId" readonly/>
           </div>
           <div class="col-4 fld">
-            <label>部門</label>
+            <label>部門<span class="th">แผนก</span></label>
             <input type="text" id="ot_dept" readonly/>
           </div>
 
           <div class="col-4 fld">
-            <label>填寫日期</label>
+            <label>填寫日期<span class="th">วันที่กรอก</span></label>
             <input type="date" id="ot_applyDate"/>
           </div>
           <div class="col-4 fld">
@@ -468,15 +468,15 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
           <div class="col-12">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-              <label style="font-weight:700;font-size:12px;letter-spacing:.3px;color:var(--muted);text-transform:uppercase">加班人員</label>
-              <button class="btn btn-secondary" onclick="ot_addWorkerRow({})" style="font-size:12px;padding:5px 12px">＋ 新增加班人</button>
+              <label style="font-weight:700;font-size:12px;letter-spacing:.3px;color:var(--muted);text-transform:uppercase">加班人員 <span style="font-size:10px;font-weight:normal">รายชื่อพนักงาน</span></label>
+              <button class="btn btn-secondary" onclick="ot_addWorkerRow({})" style="font-size:12px;padding:5px 12px">＋ 新增加班人 <span style="font-size:10px;opacity:.8">เพิ่มพนักงาน</span></button>
             </div>
             <div id="ot_workers"></div>
           </div>
 
           <!-- 預設情境快選 -->
           <div class="col-12 fld">
-            <label>📋 預設情境快選（選後自動帶入原因與備註）</label>
+            <label>📋 預設情境快選（選後自動帶入原因與備註）<span class="th">เลือกสถานการณ์ล่วงหน้า</span></label>
             <select id="ot_preset" onchange="applyOTPreset()" style="width:100%">
               <option value="">— 選擇預設情境（選填）—</option>
               <option value="進出庫作業|配合貨櫃延遲到達之卸貨與入庫作業">1. 進出庫作業</option>
@@ -849,7 +849,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
   </div><!-- /main-wrap -->
 </div><!-- /appScreen -->
 <div id="version_tag" style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,0.35);pointer-events:none;z-index:9999;letter-spacing:0.5px">
-  v71 · 2026-04-16
+  v72 · 2026-04-22
 </div>
 
 <!-- ════ 可編輯預覽寄信 Modal ════ -->
@@ -1917,13 +1917,13 @@ function ot_addWorkerRow(opts={}) {
   div.innerHTML = `
     <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 80px${id>1?' 40px':''};gap:8px;align-items:end;margin-bottom:8px">
       <div class="fld" style="margin:0">
-        <label>加班人</label>
+        <label>加班人<span class="th">พนักงาน</span></label>
         <select class="ot-worker-sel" style="width:100%">
           ${names}
         </select>
       </div>
       <div class="fld" style="margin:0">
-        <label>加班類別</label>
+        <label>加班類別<span class="th">ประเภทโอที</span></label>
         <select class="ot-cat" style="width:100%">
           <option value="平日">平日 / วันธรรมดา</option>
           <option value="例假">例假日</option>
@@ -1931,25 +1931,25 @@ function ot_addWorkerRow(opts={}) {
         </select>
       </div>
       <div class="fld" style="margin:0">
-        <label>開始</label>
+        <label>開始<span class="th">เริ่ม</span></label>
         <input type="time" class="ot-start" step="1800" style="width:100%"/>
       </div>
       <div class="fld" style="margin:0">
-        <label>結束</label>
+        <label>結束<span class="th">สิ้นสุด</span></label>
         <input type="time" class="ot-end" step="1800" style="width:100%"/>
       </div>
       <div class="fld" style="margin:0">
-        <label>時數</label>
-        <input type="text" class="ot-hours" style="width:100%" readonly placeholder="自動"/>
+        <label>時數<span class="th">ชั่วโมง</span></label>
+        <input type="text" class="ot-hours" style="width:100%" readonly placeholder="อัตโนมัติ"/>
       </div>
       ${id > 1 ? `<div style="padding-bottom:2px"><button onclick="document.getElementById('ot_w_${id}').remove()" class="btn btn-danger" style="width:36px;padding:8px 0;font-size:14px">✕</button></div>` : ''}
     </div>
     <div class="ot-other" style="display:none;margin-bottom:8px">
-      <div class="fld" style="margin:0"><label>其他人員姓名</label><input type="text" class="ot-other-name" placeholder="姓名" style="width:200px"/></div>
+      <div class="fld" style="margin:0"><label>其他人員姓名<span class="th">ชื่อพนักงาน</span></label><input type="text" class="ot-other-name" placeholder="姓名" style="width:200px"/></div>
     </div>
     <div class="fld" style="margin-bottom:0">
-      <label>原因</label>
-      <input type="text" class="ot-reason" placeholder="加班原因（必填）" style="width:100%"/>
+      <label>原因<span class="th">เหตุผล</span></label>
+      <input type="text" class="ot-reason" placeholder="เหตุผลการทำโอที (จำเป็น) / 加班原因（必填）" style="width:100%"/>
     </div>
   `;
 
