@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <!-- ╔══════════════════════════════════════════════════════╗
      ║  東立材料 請假加班系統                                ║
-     ║  版本：index_v75  |  更新：2026-04-16               ║
+     ║  版本：index_v77  |  更新：2026-04-16               ║
      ║  變更：新增泰文雙語介面    ║
      ╚══════════════════════════════════════════════════════╝ -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -849,7 +849,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
   </div><!-- /main-wrap -->
 </div><!-- /appScreen -->
 <div id="version_tag" style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,0.35);pointer-events:none;z-index:9999;letter-spacing:0.5px">
-  v75 · 2026-04-27
+  v77 · 2026-04-27
 </div>
 
 <!-- ════ 可編輯預覽寄信 Modal ════ -->
@@ -1095,6 +1095,7 @@ function calNav(delta) {
 let EMP_LIST = [];     // 員工清單（主管以上可取得，用於代理人/寄信）
 let OT_EMP_LIST = []; // 加班人員清單（全公司，用於加班申請選人）
 let CFG = {};       // system_config
+let _cfgReady = null; // CFG 載入完成的 Promise
 
 // ════ 工具函式 ════
 const $ = id => document.getElementById(id);
@@ -1385,8 +1386,10 @@ function initApp() {
   // 初始化
   initTabs();
   // 登入後預先載入系統設定（calcOTHours 需要午休/晚餐時段）
-  api({ action:'getConfig' }).then(r => {
+  // 用 _cfgReady Promise 讓其他函數可以等候 CFG 載入完成
+  _cfgReady = api({ action:'getConfig' }).then(r => {
     if (r.success) { CFG = r.data; syncEmailCfgToConsts(); }
+    return CFG;
   });
   initLeaveForm(); // 內含 loadAgentOptions()，完成後會呼叫 refreshOTWorkerSelects()
   initOTForm();    // 先用空/部份 EMP_LIST 建列，loadAgentOptions 完成後由 refreshOTWorkerSelects 補正
@@ -1464,7 +1467,17 @@ function initLeaveForm() {
   const period = $('lv_period');
   period.onchange = () => {
     $('lv_timeRow').style.display = period.value === 'hour' ? '' : 'none';
-    calcLeaveHours();
+    if (period.value === 'hour') {
+      // 切換到小時模式時，等 CFG 確認後帶入預設上下班時間
+      const setLvTimeDefaults = () => {
+        if (!$('lv_startTime').value) $('lv_startTime').value = CFG.work_start || '08:30';
+        if (!$('lv_endTime').value)   $('lv_endTime').value   = CFG.work_end   || '17:30';
+        calcLeaveHours();
+      };
+      if (_cfgReady) { _cfgReady.then(setLvTimeDefaults); } else { setLvTimeDefaults(); }
+    } else {
+      calcLeaveHours();
+    }
   };
   ['lv_startDate','lv_endDate','lv_startTime','lv_endTime'].forEach(id=>{
     $(id).onchange = calcLeaveHours;
@@ -1978,16 +1991,18 @@ function ot_addWorkerRow(opts={}) {
   const setOTDefaults = () => {
     const ws = CFG.work_start || '08:30';
     const we = CFG.work_end   || '17:30';
-    div.querySelector('.ot-start').value = ws;
-    div.querySelector('.ot-end').value   = we;
+    const startEl = div.querySelector('.ot-start');
+    const endEl   = div.querySelector('.ot-end');
+    // 只在使用者尚未手動填入時才套用預設值
+    if (!startEl.value) startEl.value = ws;
+    if (!endEl.value)   endEl.value   = we;
     calcH();
   };
-  if (CFG && CFG.work_start) {
-    // CFG 已載入，直接設定
-    setOTDefaults();
+  // 等待 CFG 載入完成後再設定預設時間（確保 lunch_start 等設定已就緒）
+  if (_cfgReady) {
+    _cfgReady.then(setOTDefaults);
   } else {
-    // CFG 未載入，等 500ms 後再試（GAS 預熱期間）
-    setTimeout(setOTDefaults, 800);
+    setOTDefaults(); // CFG 已載入（非首次登入情況）
   }
 
   // 其他人員
