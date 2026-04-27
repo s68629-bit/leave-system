@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <!-- ╔══════════════════════════════════════════════════════╗
      ║  東立材料 請假加班系統                                ║
-     ║  版本：index_v73  |  更新：2026-04-16               ║
+     ║  版本：index_v74  |  更新：2026-04-16               ║
      ║  變更：新增泰文雙語介面    ║
      ╚══════════════════════════════════════════════════════╝ -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -849,7 +849,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
   </div><!-- /main-wrap -->
 </div><!-- /appScreen -->
 <div id="version_tag" style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,0.35);pointer-events:none;z-index:9999;letter-spacing:0.5px">
-  v73 · 2026-04-27
+  v74 · 2026-04-27
 </div>
 
 <!-- ════ 可編輯預覽寄信 Modal ════ -->
@@ -3261,17 +3261,31 @@ function addMailRecipient(field) {
 
 // ════ 預覽信件 async wrapper（確保 EMP_LIST 就緒後再 build）════
 async function ensureEmpList() {
+  // 若 EMP_LIST 為空，或只有少量資料（可能只有有 email 的人）
+  // 用 for_ot=true 取得全公司完整清單（包含無 email 的主管）
   if (EMP_LIST.length === 0) {
     try {
+      // 先取一般清單（有 email 的人）
       const res = await api({ action:'getEmployees' });
       if (res.success && res.data.length) EMP_LIST = res.data;
+      // 再取全公司清單補充缺漏的主管
+      const res2 = await api({ action:'getEmployees', for_ot:'true' });
+      if (res2.success && res2.data.length) {
+        const existing = new Set(EMP_LIST.map(e => String(e.emp_id)));
+        res2.data.forEach(e => {
+          if (!existing.has(String(e.emp_id))) EMP_LIST.push(e);
+        });
+        // 同步更新 OT_EMP_LIST
+        if (OT_EMP_LIST.length === 0) OT_EMP_LIST = res2.data;
+      }
     } catch(e) {}
   }
 }
 
 async function openLeaveMailModal(mailType='gmail') {
   await ensureEmpList();
-  openMailModal(buildLeaveEmail(), 'leave', mailType);
+  const mailData = buildLeaveEmail();
+  openMailModal(mailData, 'leave', mailType);
 }
 
 async function openOTMailModal(mailType='gmail') {
@@ -3279,7 +3293,8 @@ async function openOTMailModal(mailType='gmail') {
   if (document.querySelectorAll('#ot_workers .ot-row').length === 0) {
     ot_addWorkerRow({ isApplicant: true });
   }
-  openMailModal(buildOTEmail(), 'ot', mailType);
+  const mailData = buildOTEmail();
+  openMailModal(mailData, 'ot', mailType);
 }
 
 // 記錄目前 modal 的寄信類型（'outlook' or 'gmail'）
@@ -3303,26 +3318,31 @@ function openMailModal(m, context, mailType='gmail') {
   $('mail_cc').value = (m.ccEmails || '').split(',').map(e=>e.trim()).filter(Boolean).join(sep);
   $('mail_body').value    = m.body || '';
   $('modal_mail_status').innerHTML = '';
-  // 填充員工選擇器（若 EMP_LIST 為空先載入）
-  const fillEmpSel = () => {
+  // 填充員工選擇器：用全公司清單（含無 email 者後過濾），讓所有有 email 的人都出現
+  const fillEmpSel = (sourceList) => {
     const empSel = document.getElementById('mail_emp_sel');
     if (!empSel) return;
     empSel.innerHTML = '<option value="">選擇員工...</option>';
-    const list = EMP_LIST.length ? EMP_LIST : (SESSION ? [SESSION] : []);
-    list.filter(e=>e.status!=='inactive' && e.email).forEach(e=>{
+    const list = sourceList || EMP_LIST;
+    list.filter(e => e.status !== 'inactive' && e.email).forEach(e => {
       const opt = document.createElement('option');
       opt.value = e.emp_id;
-      opt.textContent = `${e.name}（${e.dept||''}）— ${e.email}`;
+      opt.textContent = `${e.name}（${e.dept || ''}）— ${e.email}`;
       empSel.appendChild(opt);
     });
   };
-  // 嘗試取得員工清單（所有角色都試試）
-  if (EMP_LIST.length === 0) {
-    api({action:'getEmployees'}).then(r=>{
-      if(r.success && r.data.length) EMP_LIST=r.data;
+  // 用 for_ot=true 取得全公司完整清單（staff 也能取到所有有 email 的員工）
+  api({ action:'getEmployees', for_ot:'true' }).then(r => {
+    if (r.success && r.data.length) {
+      // 補充 EMP_LIST
+      const existing = new Set(EMP_LIST.map(e => String(e.emp_id)));
+      r.data.forEach(e => { if (!existing.has(String(e.emp_id))) EMP_LIST.push(e); });
+      if (OT_EMP_LIST.length === 0) OT_EMP_LIST = r.data;
+      fillEmpSel(r.data);
+    } else {
       fillEmpSel();
-    });
-  } else { fillEmpSel(); }
+    }
+  }).catch(() => fillEmpSel());
   // 根據 mailType 突顯對應按鈕，並調整按鈕樣式讓使用者清楚知道預設動作
   const outlookBtn = $('modal_mail_outlook');
   const gmailBtn   = $('modal_mail_gmail');
