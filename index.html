@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <!-- ╔══════════════════════════════════════════════════════╗
      ║  東立材料 請假加班系統                                ║
-     ║  版本：index_v72  |  更新：2026-04-16               ║
+     ║  版本：index_v73  |  更新：2026-04-16               ║
      ║  變更：新增泰文雙語介面    ║
      ╚══════════════════════════════════════════════════════╝ -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -849,7 +849,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
   </div><!-- /main-wrap -->
 </div><!-- /appScreen -->
 <div id="version_tag" style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,0.35);pointer-events:none;z-index:9999;letter-spacing:0.5px">
-  v72 · 2026-04-22
+  v73 · 2026-04-27
 </div>
 
 <!-- ════ 可編輯預覽寄信 Modal ════ -->
@@ -1846,6 +1846,17 @@ async function loadAgentOptions() {
     if (res.success) {
       // ★ 所有角色都填入 EMP_LIST（staff 也需要，用於 buildLeaveEmail/buildOTEmail 找主管）
       if (EMP_LIST.length === 0) EMP_LIST = res.data;
+      // staff 的 getEmployees 只回傳有 email 的人，可能缺少主管資料
+      // 用 for_ot=true 取得全公司清單補充（包含無 email 的主管）
+      if (!hasRole(SESSION, 'supervisor')) {
+        api({ action:'getEmployees', for_ot:'true' }).then(r => {
+          if (r.success) {
+            // 合併：用 for_ot 清單補充 EMP_LIST 裡沒有的人
+            const existing = new Set(EMP_LIST.map(e => String(e.emp_id)));
+            r.data.forEach(e => { if (!existing.has(String(e.emp_id))) EMP_LIST.push(e); });
+          }
+        });
+      }
 
       const sel = $('lv_agent');
       let defaultAgent = '';
@@ -1940,7 +1951,7 @@ function ot_addWorkerRow(opts={}) {
       </div>
       <div class="fld" style="margin:0">
         <label>時數<span class="th">ชั่วโมง</span></label>
-        <input type="text" class="ot-hours" style="width:100%" readonly placeholder="อัตโนมัติ"/>
+        <input type="text" class="ot-hours" style="width:100%" readonly placeholder="自動"/>
       </div>
       ${id > 1 ? `<div style="padding-bottom:2px"><button onclick="document.getElementById('ot_w_${id}').remove()" class="btn btn-danger" style="width:36px;padding:8px 0;font-size:14px">✕</button></div>` : ''}
     </div>
@@ -1963,6 +1974,10 @@ function ot_addWorkerRow(opts={}) {
   };
   div.querySelector('.ot-start').onchange = calcH;
   div.querySelector('.ot-end').onchange   = calcH;
+  // 預設加班時間：開始 08:30，結束 17:30
+  div.querySelector('.ot-start').value = CFG.work_start || '08:30';
+  div.querySelector('.ot-end').value   = CFG.work_end   || '17:30';
+  calcH(); // 自動計算預設時數
 
   // 其他人員
   div.querySelector('.ot-worker-sel').onchange = function() {
@@ -2567,7 +2582,7 @@ async function loadMgrLeaves() {
       <td>${toLocalDate(r.start_dt)}</td><td>${toLocalDate(r.end_dt)}</td>
       <td>${r.hours}h</td>
       <td>${r.reason||''}</td>
-      <td><span class="tag tag-green">มีผล<br><span class="th" style="color:inherit">有效</span></td>
+      <td><span class="tag tag-green">有效</span></td>
       ${actionCell}`;
     tbody.appendChild(tr);
   });
