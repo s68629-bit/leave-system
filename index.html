@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <!-- ╔══════════════════════════════════════════════════════╗
      ║  東立材料 請假加班系統                                ║
-     ║  版本：index_v74  |  更新：2026-04-16               ║
+     ║  版本：index_v75  |  更新：2026-04-16               ║
      ║  變更：新增泰文雙語介面    ║
      ╚══════════════════════════════════════════════════════╝ -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -849,7 +849,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
   </div><!-- /main-wrap -->
 </div><!-- /appScreen -->
 <div id="version_tag" style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,0.35);pointer-events:none;z-index:9999;letter-spacing:0.5px">
-  v74 · 2026-04-27
+  v75 · 2026-04-27
 </div>
 
 <!-- ════ 可編輯預覽寄信 Modal ════ -->
@@ -1943,11 +1943,11 @@ function ot_addWorkerRow(opts={}) {
       </div>
       <div class="fld" style="margin:0">
         <label>開始<span class="th">เริ่ม</span></label>
-        <input type="time" class="ot-start" step="1800" style="width:100%"/>
+        <input type="time" class="ot-start" step="60" style="width:100%"/>
       </div>
       <div class="fld" style="margin:0">
         <label>結束<span class="th">สิ้นสุด</span></label>
-        <input type="time" class="ot-end" step="1800" style="width:100%"/>
+        <input type="time" class="ot-end" step="60" style="width:100%"/>
       </div>
       <div class="fld" style="margin:0">
         <label>時數<span class="th">ชั่วโมง</span></label>
@@ -1974,10 +1974,21 @@ function ot_addWorkerRow(opts={}) {
   };
   div.querySelector('.ot-start').onchange = calcH;
   div.querySelector('.ot-end').onchange   = calcH;
-  // 預設加班時間：開始 08:30，結束 17:30
-  div.querySelector('.ot-start').value = CFG.work_start || '08:30';
-  div.querySelector('.ot-end').value   = CFG.work_end   || '17:30';
-  calcH(); // 自動計算預設時數
+  // 預設加班時間：等 CFG 確認載入後再設定（CFG 是非同步載入）
+  const setOTDefaults = () => {
+    const ws = CFG.work_start || '08:30';
+    const we = CFG.work_end   || '17:30';
+    div.querySelector('.ot-start').value = ws;
+    div.querySelector('.ot-end').value   = we;
+    calcH();
+  };
+  if (CFG && CFG.work_start) {
+    // CFG 已載入，直接設定
+    setOTDefaults();
+  } else {
+    // CFG 未載入，等 500ms 後再試（GAS 預熱期間）
+    setTimeout(setOTDefaults, 800);
+  }
 
   // 其他人員
   div.querySelector('.ot-worker-sel').onchange = function() {
