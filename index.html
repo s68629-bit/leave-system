@@ -402,9 +402,9 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
               <div style="flex:1">
                 <div class="tp-wrap" id="lv_startWrap">
                   <span class="tp-ampm" id="lv_startAmpm">上午</span>
-                  <select id="lv_startH" onchange="tpChange('lv_start');calcLeaveHours()"></select>
+                  <select id="lv_startH" onchange="tpChange('lv_start');calcLeaveHours()"><option value="0">00</option><option value="1">01</option><option value="2">02</option><option value="3">03</option><option value="4">04</option><option value="5">05</option><option value="6">06</option><option value="7">07</option><option value="8">08</option><option value="9">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option></select>
                   <span class="tp-colon">:</span>
-                  <select id="lv_startM" onchange="tpChange('lv_start');calcLeaveHours()"></select>
+                  <select id="lv_startM" onchange="tpChange('lv_start');calcLeaveHours()"><option value="0">00</option><option value="5">05</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option><option value="30">30</option><option value="35">35</option><option value="40">40</option><option value="45">45</option><option value="50">50</option><option value="55">55</option></select>
                 </div>
                 <div class="tp-hint" id="lv_start24">24h: 08:30</div>
               </div>
@@ -412,9 +412,9 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
               <div style="flex:1">
                 <div class="tp-wrap" id="lv_endWrap">
                   <span class="tp-ampm" id="lv_endAmpm">上午</span>
-                  <select id="lv_endH" onchange="tpChange('lv_end');calcLeaveHours()"></select>
+                  <select id="lv_endH" onchange="tpChange('lv_end');calcLeaveHours()"><option value="0">00</option><option value="1">01</option><option value="2">02</option><option value="3">03</option><option value="4">04</option><option value="5">05</option><option value="6">06</option><option value="7">07</option><option value="8">08</option><option value="9">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option></select>
                   <span class="tp-colon">:</span>
-                  <select id="lv_endM" onchange="tpChange('lv_end');calcLeaveHours()"></select>
+                  <select id="lv_endM" onchange="tpChange('lv_end');calcLeaveHours()"><option value="0">00</option><option value="5">05</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option><option value="30">30</option><option value="35">35</option><option value="40">40</option><option value="45">45</option><option value="50">50</option><option value="55">55</option></select>
                 </div>
                 <div class="tp-hint" id="lv_end24">24h: 17:30</div>
               </div>
@@ -1577,29 +1577,29 @@ function initLeaveForm() {
 
 // ── 上午/下午標籤 + 24小時顯示輔助 ──
 // ══ 自訂時間選擇器（select版，不依賴 input[type=time]，避免locale問題）══
+// options 已在 HTML 靜態寫入，只需設 value
 function buildHourOpts(selEl, curH) {
   if (!selEl) return;
-  selEl.innerHTML = '';
-  for (let h = 0; h < 24; h++) {
+  selEl.value = curH;           // 直接設 select.value
+  if (selEl.value != curH) {    // 若不在 options 裡（理論上不會），補插
     const o = document.createElement('option');
-    o.value = h; o.textContent = String(h).padStart(2,'0');
-    if (h === curH) o.selected = true;
+    o.value = curH; o.textContent = String(curH).padStart(2,'0');
     selEl.appendChild(o);
+    selEl.value = curH;
   }
 }
 function buildMinOpts(selEl, curM) {
   if (!selEl) return;
-  selEl.innerHTML = '';
-  // 支援整點和半點（0,5,10...55），若 curM 不在其中也插入
-  const minSet = new Set();
-  for (let m = 0; m < 60; m += 5) minSet.add(m);
-  minSet.add(curM);
-  [...minSet].sort((a,b)=>a-b).forEach(m => {
+  // 若 curM 不在 5 倍數裡（如 30 → 已在），補插
+  if (!selEl.querySelector(`option[value="${curM}"]`)) {
     const o = document.createElement('option');
-    o.value = m; o.textContent = String(m).padStart(2,'0');
-    if (m === curM) o.selected = true;
-    selEl.appendChild(o);
-  });
+    o.value = curM; o.textContent = String(curM).padStart(2,'0');
+    // 按值排序插入
+    const opts = [...selEl.options].concat([o]).sort((a,b)=>+a.value-+b.value);
+    selEl.innerHTML = '';
+    opts.forEach(op => selEl.appendChild(op));
+  }
+  selEl.value = curM;
 }
 // 讀取 leave 表單時間（永遠回傳 HH:MM 格式）
 function getLvTime(prefix) {
@@ -1617,22 +1617,32 @@ function tpRefreshLv(prefix) {
   if (hint)   hint.textContent   = '24h: ' + val;
   if (hidden) hidden.value = val;
 }
-function tpChange(prefix) { tpRefreshLv(prefix); }
+// getLvTime: 直接從 select 讀值，不依賴 hidden input
+function getLvTimeFromSel(prefix) { return getLvTime(prefix); }
+function tpChange(prefix) { tpRefreshLv(prefix); calcLeaveHours(); }
 function initLvTimePicker(sv, ev) {
   const [sh,sm] = (sv||'08:30').split(':').map(Number);
   const [eh,em] = (ev||'17:30').split(':').map(Number);
   buildHourOpts($('lv_startH'), sh); buildMinOpts($('lv_startM'), sm);
   buildHourOpts($('lv_endH'),   eh); buildMinOpts($('lv_endM'),   em);
   tpRefreshLv('lv_start'); tpRefreshLv('lv_end');
+  // hidden input 更新後立即計算
+  calcLeaveHours();
 }
 // OT row
 function otTpChange(selEl) {
   const row = selEl.closest('.ot-row');
   if (!row) return;
+  // 直接從 select 讀值（不依賴 hidden input）
+  const getV = prefix => {
+    const hS = row.querySelector('.ot-' + prefix + 'H');
+    const mS = row.querySelector('.ot-' + prefix + 'M');
+    if (!hS || !mS) return '';
+    return String(parseInt(hS.value,10)).padStart(2,'0') + ':' + String(parseInt(mS.value,10)).padStart(2,'0');
+  };
+  const s = getV('start'), e = getV('end');
+  // 更新 hidden input + ampm + 24h hint
   otTpRefreshRow(row);
-  // 重算時數
-  const s = row.querySelector('.ot-start').value;
-  const e = row.querySelector('.ot-end').value;
   const errEl = row.querySelector('.ot-time-err');
   const toMin = t => { const [h,m]=t.split(':').map(Number); return h*60+m; };
   if (s && e && toMin(e) === toMin(s)) {
@@ -1669,6 +1679,9 @@ function initOtTpRow(row, sv, ev) {
   buildHourOpts(sH,sh); buildMinOpts(sM,sm);
   buildHourOpts(eH,eh); buildMinOpts(eM,em);
   otTpRefreshRow(row);
+  // 初始化後立即觸發計算
+  const anySelect = row.querySelector('.ot-startH');
+  if (anySelect) otTpChange(anySelect);
 }
 // 相容 stub
 function initAllTimePickers(){}
@@ -1691,8 +1704,9 @@ function calcLeaveHours() {
   else if (period === 'am')  h = days * 3.5;
   else if (period === 'pm')  h = days * 4.5;
   else if (period === 'hour') {
-    const st = $('lv_startTime').value;
-    const et = $('lv_endTime').value;
+    // 直接從 select 讀值，確保不受 hidden input 時序影響
+    const st = getLvTime('lv_start');
+    const et = getLvTime('lv_end');
     const errEl = $('lv_timeErr');
     // 防呆：結束不能早於開始
     if (st && et) {
@@ -2177,9 +2191,9 @@ function ot_addWorkerRow(opts={}) {
         <label>開始<span class="th">เริ่ม</span></label>
         <div class="tp-wrap ot-start-wrap">
           <span class="tp-ampm ot-start-ampm">上午</span>
-          <select class="ot-startH" onchange="otTpChange(this)"></select>
+          <select class="ot-startH" onchange="otTpChange(this)"><option value="0">00</option><option value="1">01</option><option value="2">02</option><option value="3">03</option><option value="4">04</option><option value="5">05</option><option value="6">06</option><option value="7">07</option><option value="8">08</option><option value="9">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option></select>
           <span class="tp-colon">:</span>
-          <select class="ot-startM" onchange="otTpChange(this)"></select>
+          <select class="ot-startM" onchange="otTpChange(this)"><option value="0">00</option><option value="5">05</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option><option value="30">30</option><option value="35">35</option><option value="40">40</option><option value="45">45</option><option value="50">50</option><option value="55">55</option></select>
         </div>
         <div class="tp-hint ot-start-24"></div>
         <input type="hidden" class="ot-start" value="08:30"/>
@@ -2188,9 +2202,9 @@ function ot_addWorkerRow(opts={}) {
         <label>結束<span class="th">สิ้นสุด</span></label>
         <div class="tp-wrap ot-end-wrap">
           <span class="tp-ampm ot-end-ampm">上午</span>
-          <select class="ot-endH" onchange="otTpChange(this)"></select>
+          <select class="ot-endH" onchange="otTpChange(this)"><option value="0">00</option><option value="1">01</option><option value="2">02</option><option value="3">03</option><option value="4">04</option><option value="5">05</option><option value="6">06</option><option value="7">07</option><option value="8">08</option><option value="9">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option></select>
           <span class="tp-colon">:</span>
-          <select class="ot-endM" onchange="otTpChange(this)"></select>
+          <select class="ot-endM" onchange="otTpChange(this)"><option value="0">00</option><option value="5">05</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option><option value="30">30</option><option value="35">35</option><option value="40">40</option><option value="45">45</option><option value="50">50</option><option value="55">55</option></select>
         </div>
         <div class="tp-hint ot-end-24"></div>
         <input type="hidden" class="ot-end" value="17:30"/>
@@ -2221,26 +2235,37 @@ function ot_addWorkerRow(opts={}) {
     </div>
   `;
 
-  // 四-3,5: 自動計算時數，最小0.5h，扣午休和晚餐
+  // 四-3,5: 從 select 直接讀值計算時數
+  const getOtVal = (prefix) => {
+    const hSel = div.querySelector('.ot-' + prefix + 'H');
+    const mSel = div.querySelector('.ot-' + prefix + 'M');
+    if (!hSel || !mSel) return '';
+    const h = parseInt(hSel.value, 10), m = parseInt(mSel.value, 10);
+    return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+  };
   const calcH = () => {
-    const s = div.querySelector('.ot-start').value;
-    const e = div.querySelector('.ot-end').value;
+    const s = getOtVal('start');
+    const e = getOtVal('end');
     const errEl = div.querySelector('.ot-time-err');
-    // 更新上午/下午標籤（由 otTpRefreshRow 處理，calcH 不需重複）
+    // 同步 hidden input + ampm + 24h
+    otTpRefreshRow(div);
     if (!s || !e) return;
-    // 防呆：結束不能早於開始（跨日允許，但提示）
     const toMin = t => { const [hh,mm]=t.split(':').map(Number); return hh*60+mm; };
-    if (toMin(e) === toMin(s)) { errEl && (errEl.style.display = ''); div.querySelector('.ot-hours').value = ''; return; }
-    errEl && (errEl.style.display = 'none');
+    if (toMin(e) === toMin(s)) {
+      if (errEl) errEl.style.display = '';
+      div.querySelector('.ot-hours').value = '';
+      return;
+    }
+    if (errEl) errEl.style.display = 'none';
     const skipLunch  = div.querySelector('.ot-skip-lunch')?.checked;
     const skipDinner = div.querySelector('.ot-skip-dinner')?.checked;
     const raw = calcOTHours(s, e, skipLunch, skipDinner);
     div.querySelector('.ot-hours').value = raw > 0 ? raw + ' h' : '';
   };
-  div.querySelector('.ot-start').addEventListener('change', calcH);
-  div.querySelector('.ot-start').addEventListener('input',  calcH);
-  div.querySelector('.ot-end').addEventListener('change', calcH);
-  div.querySelector('.ot-end').addEventListener('input',  calcH);
+  div.querySelector('.ot-startH').onchange = calcH;
+  div.querySelector('.ot-startM').onchange = calcH;
+  div.querySelector('.ot-endH').onchange   = calcH;
+  div.querySelector('.ot-endM').onchange   = calcH;
   div.querySelector('.ot-skip-lunch').onchange  = calcH;
   div.querySelector('.ot-skip-dinner').onchange = calcH;
   // 若 dinner 未設定，隱藏晚餐選項
