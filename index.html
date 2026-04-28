@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <!-- ╔══════════════════════════════════════════════════════╗
      ║  東立材料 請假加班系統                                ║
-     ║  版本：index_v78  |  更新：2026-04-28               ║
+     ║  版本：index_v79  |  更新：2026-04-28               ║
      ║  變更：新增泰文雙語介面    ║
      ╚══════════════════════════════════════════════════════╝ -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -258,16 +258,25 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
 .modal h3{font-size:16px;font-weight:800;color:var(--primary);margin-bottom:16px}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
 
-/* 自訂時間選擇器：顯示上午/下午 + 24小時制 */
-/* 時間選擇器：input 正常顯示，上方有上午/下午標籤 */
-.time-wrap { display: flex; flex-direction: column; gap: 2px; }
-.time-wrap .tp-ampm-label {
-  font-size: 11px; font-weight: 600; color: var(--primary);
-  padding-left: 2px; min-height: 14px; letter-spacing: 0.3px;
+/* 自訂時間選擇器（完全不依賴 input[type=time]，避免 locale 問題） */
+.tp-wrap {
+  display: flex; align-items: center; gap: 4px;
+  border: 1.5px solid var(--border); border-radius: 7px;
+  padding: 6px 10px; background: #fff; transition: border .2s;
 }
-.time-wrap input[type="time"] {
-  width: 100%;
+.tp-wrap:focus-within { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(37,99,235,.08); }
+.tp-ampm {
+  font-size: 12px; font-weight: 700; color: var(--primary);
+  min-width: 28px; letter-spacing: 0.3px;
 }
+.tp-wrap select {
+  border: none; outline: none; background: transparent;
+  font-size: 15px; color: var(--text); cursor: pointer;
+  padding: 0; font-family: inherit; font-weight: 500;
+  -webkit-appearance: none; appearance: none;
+}
+.tp-wrap .tp-colon { font-size: 15px; font-weight: 700; color: var(--text); }
+.tp-hint { font-size: 11px; color: var(--muted); margin-top: 3px; }
 </style>
 </head>
 <body>
@@ -389,23 +398,30 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
           </div>
           <div class="col-12 fld" id="lv_timeRow" style="display:none">
             <label>時間<span class="th">เวลา</span></label>
-            <div style="display:flex;gap:12px;align-items:flex-start">
+            <div style="display:flex;gap:12px;align-items:center">
               <div style="flex:1">
-                <div style="display:flex;align-items:center;gap:6px">
-                  <span id="lv_startAmpm" style="font-size:12px;font-weight:600;color:var(--primary);min-width:28px"></span>
-                  <input type="time" id="lv_startTime" style="flex:1" onchange="syncAmpm('lv_startTime','lv_startAmpm');calcLeaveHours()"/>
+                <div class="tp-wrap" id="lv_startWrap">
+                  <span class="tp-ampm" id="lv_startAmpm">上午</span>
+                  <select id="lv_startH" onchange="tpChange('lv_start');calcLeaveHours()"></select>
+                  <span class="tp-colon">:</span>
+                  <select id="lv_startM" onchange="tpChange('lv_start');calcLeaveHours()"></select>
                 </div>
-                <div id="lv_start24" style="font-size:11px;color:var(--muted);margin-top:3px;padding-left:34px"></div>
+                <div class="tp-hint" id="lv_start24">24h: 08:30</div>
               </div>
-              <span style="padding-top:10px;color:var(--muted);font-size:18px">～</span>
+              <span style="font-size:18px;color:var(--muted);flex-shrink:0">～</span>
               <div style="flex:1">
-                <div style="display:flex;align-items:center;gap:6px">
-                  <span id="lv_endAmpm" style="font-size:12px;font-weight:600;color:var(--primary);min-width:28px"></span>
-                  <input type="time" id="lv_endTime" style="flex:1" onchange="syncAmpm('lv_endTime','lv_endAmpm');calcLeaveHours()"/>
+                <div class="tp-wrap" id="lv_endWrap">
+                  <span class="tp-ampm" id="lv_endAmpm">上午</span>
+                  <select id="lv_endH" onchange="tpChange('lv_end');calcLeaveHours()"></select>
+                  <span class="tp-colon">:</span>
+                  <select id="lv_endM" onchange="tpChange('lv_end');calcLeaveHours()"></select>
                 </div>
-                <div id="lv_end24" style="font-size:11px;color:var(--muted);margin-top:3px;padding-left:34px"></div>
+                <div class="tp-hint" id="lv_end24">24h: 17:30</div>
               </div>
             </div>
+            <!-- 隱藏 input 供其他程式讀值（永遠是 HH:MM 格式） -->
+            <input type="hidden" id="lv_startTime" value="08:30"/>
+            <input type="hidden" id="lv_endTime" value="17:30"/>
             <div id="lv_timeErr" style="color:#e74c3c;font-size:12px;margin-top:6px;display:none">⚠ 結束時間不能早於開始時間</div>
           </div>
           <div class="col-8 fld" id="lv_mealRow" style="display:none">
@@ -886,7 +902,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
   </div><!-- /main-wrap -->
 </div><!-- /appScreen -->
 <div id="version_tag" style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,0.35);pointer-events:none;z-index:9999;letter-spacing:0.5px">
-  v78 · 2026-04-28
+  v79 · 2026-04-28
 </div>
 
 <!-- ════ 可編輯預覽寄信 Modal ════ -->
@@ -1432,12 +1448,10 @@ function initApp() {
   initOTForm();    // 先用空/部份 EMP_LIST 建列，loadAgentOptions 完成後由 refreshOTWorkerSelects 補正
   // 初始化所有時間選擇器的上午/下午標籤
   setTimeout(() => {
-    initAllTimePickers();
-    // 同步請假欄位的 ampm + 24h 提示
-    if ($('lv_startTime') && $('lv_startTime').value) syncAmpm('lv_startTime','lv_startAmpm');
-    if ($('lv_endTime')   && $('lv_endTime').value)   syncAmpm('lv_endTime','lv_endAmpm');
-    // 同步所有 OT rows
-    document.querySelectorAll('.ot-start,.ot-end').forEach(syncAmpmOT);
+    // 初始化請假時間選擇器（若已顯示）
+    if ($('lv_startH')) initLvTimePicker(CFG.work_start||'08:30', CFG.work_end||'17:30');
+    // 初始化所有 OT rows
+    document.querySelectorAll('.ot-row').forEach(row => initOtTpRow(row, CFG.work_start||'08:30', CFG.work_end||'17:30'));
   }, 300);
   initMyRecord();
   loadBalance('lv_balSummary', true); // 請假頁快覽獨立呼叫，確保請假頁一登入就顯示
@@ -1525,12 +1539,8 @@ function initLeaveForm() {
     if (period.value === 'hour') {
       // 切換到小時模式時，等 CFG 確認後帶入預設上下班時間並更新顯示
       const setLvTimeDefaults = () => {
-        if (!$('lv_startTime').value) $('lv_startTime').value = CFG.work_start || '08:30';
-        if (!$('lv_endTime').value)   $('lv_endTime').value   = CFG.work_end   || '17:30';
-        // 刷新自訂時間顯示
-        syncAmpm('lv_startTime','lv_startAmpm');
-        syncAmpm('lv_endTime','lv_endAmpm');
-        lvShowHideTimeRows(); // CFG 載入後再更新晚餐選項顯示
+        initLvTimePicker(CFG.work_start||'08:30', CFG.work_end||'17:30');
+        lvShowHideTimeRows();
         calcLeaveHours();
       };
       if (_cfgReady) { _cfgReady.then(setLvTimeDefaults); } else { setLvTimeDefaults(); }
@@ -1566,54 +1576,108 @@ function initLeaveForm() {
 }
 
 // ── 上午/下午標籤 + 24小時顯示輔助 ──
-function getAmPmLabel(t) {
-  if (!t) return '';
-  const h = parseInt(t.split(':')[0], 10);
-  if (isNaN(h)) return '';
-  return h < 12 ? '上午' : '下午';
+// ══ 自訂時間選擇器（select版，不依賴 input[type=time]，避免locale問題）══
+function buildHourOpts(selEl, curH) {
+  if (!selEl) return;
+  selEl.innerHTML = '';
+  for (let h = 0; h < 24; h++) {
+    const o = document.createElement('option');
+    o.value = h; o.textContent = String(h).padStart(2,'0');
+    if (h === curH) o.selected = true;
+    selEl.appendChild(o);
+  }
 }
-// 同步 input → ampm label + 24h hint
-function syncAmpm(inputId, labelId) {
-  const input = document.getElementById(inputId);
-  const lbl   = document.getElementById(labelId);
-  const val   = (input||{}).value || '';
-  if (lbl) lbl.textContent = getAmPmLabel(val);
-  // 更新 24h 提示（id 規則：lv_startAmpm→lv_start24, lv_endAmpm→lv_end24）
-  const hintId = labelId.replace('Ampm','24');
-  const hint = document.getElementById(hintId);
-  if (hint) hint.textContent = val ? '24h: ' + val : '';
-}
-// 同步 time-wrap 內的 input → .tp-ampm-label（用於動態建立的 OT row）
-function syncAmpmWrap(wrapEl) {
-  const input = wrapEl ? wrapEl.querySelector('input[type="time"]') : null;
-  const lbl   = wrapEl ? wrapEl.querySelector('.tp-ampm-label') : null;
-  if (input && lbl) lbl.textContent = getAmPmLabel(input.value);
-}
-// 初始化所有 time-wrap（頁面載入後統一呼叫）
-function initAllTimePickers() {
-  document.querySelectorAll('.time-wrap').forEach(wrap => {
-    const input = wrap.querySelector('input[type="time"]');
-    if (!input) return;
-    syncAmpmWrap(wrap);
-    input.addEventListener('change', () => syncAmpmWrap(wrap));
-    input.addEventListener('input',  () => syncAmpmWrap(wrap));
+function buildMinOpts(selEl, curM) {
+  if (!selEl) return;
+  selEl.innerHTML = '';
+  // 支援整點和半點（0,5,10...55），若 curM 不在其中也插入
+  const minSet = new Set();
+  for (let m = 0; m < 60; m += 5) minSet.add(m);
+  minSet.add(curM);
+  [...minSet].sort((a,b)=>a-b).forEach(m => {
+    const o = document.createElement('option');
+    o.value = m; o.textContent = String(m).padStart(2,'0');
+    if (m === curM) o.selected = true;
+    selEl.appendChild(o);
   });
 }
-// 舊介面相容 stub
+// 讀取 leave 表單時間（永遠回傳 HH:MM 格式）
+function getLvTime(prefix) {
+  const h = parseInt(($( prefix + 'H')||{value:0}).value, 10) || 0;
+  const m = parseInt(($( prefix + 'M')||{value:0}).value, 10) || 0;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
+function tpRefreshLv(prefix) {
+  const val = getLvTime(prefix);
+  const h = parseInt(val.split(':')[0], 10);
+  const ampmEl = $(prefix + 'Ampm');
+  const hint   = $(prefix + '24');
+  const hidden = $(prefix + 'Time');
+  if (ampmEl) ampmEl.textContent = h < 12 ? '上午' : '下午';
+  if (hint)   hint.textContent   = '24h: ' + val;
+  if (hidden) hidden.value = val;
+}
+function tpChange(prefix) { tpRefreshLv(prefix); }
+function initLvTimePicker(sv, ev) {
+  const [sh,sm] = (sv||'08:30').split(':').map(Number);
+  const [eh,em] = (ev||'17:30').split(':').map(Number);
+  buildHourOpts($('lv_startH'), sh); buildMinOpts($('lv_startM'), sm);
+  buildHourOpts($('lv_endH'),   eh); buildMinOpts($('lv_endM'),   em);
+  tpRefreshLv('lv_start'); tpRefreshLv('lv_end');
+}
+// OT row
+function otTpChange(selEl) {
+  const row = selEl.closest('.ot-row');
+  if (!row) return;
+  otTpRefreshRow(row);
+  // 重算時數
+  const s = row.querySelector('.ot-start').value;
+  const e = row.querySelector('.ot-end').value;
+  const errEl = row.querySelector('.ot-time-err');
+  const toMin = t => { const [h,m]=t.split(':').map(Number); return h*60+m; };
+  if (s && e && toMin(e) === toMin(s)) {
+    if (errEl) errEl.style.display = '';
+    row.querySelector('.ot-hours').value = '';
+    return;
+  }
+  if (errEl) errEl.style.display = 'none';
+  const skipL = row.querySelector('.ot-skip-lunch')?.checked;
+  const skipD = row.querySelector('.ot-skip-dinner')?.checked;
+  const raw = calcOTHours(s, e, skipL, skipD);
+  row.querySelector('.ot-hours').value = raw > 0 ? raw + ' h' : '';
+}
+function otTpRefreshRow(row) {
+  ['start','end'].forEach(se => {
+    const hSel = row.querySelector('.ot-' + se + 'H');
+    const mSel = row.querySelector('.ot-' + se + 'M');
+    if (!hSel || !mSel) return;
+    const h = parseInt(hSel.value,10), m = parseInt(mSel.value,10);
+    const val = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+    const hidden = row.querySelector('.ot-' + se);
+    const ampm   = row.querySelector('.ot-' + se + '-ampm');
+    const hint   = row.querySelector('.ot-' + se + '-24');
+    if (hidden) hidden.value = val;
+    if (ampm)   ampm.textContent = h < 12 ? '上午' : '下午';
+    if (hint)   hint.textContent = '24h: ' + val;
+  });
+}
+function initOtTpRow(row, sv, ev) {
+  const [sh,sm] = (sv||'08:30').split(':').map(Number);
+  const [eh,em] = (ev||'17:30').split(':').map(Number);
+  const sH=row.querySelector('.ot-startH'), sM=row.querySelector('.ot-startM');
+  const eH=row.querySelector('.ot-endH'),   eM=row.querySelector('.ot-endM');
+  buildHourOpts(sH,sh); buildMinOpts(sM,sm);
+  buildHourOpts(eH,eh); buildMinOpts(eM,em);
+  otTpRefreshRow(row);
+}
+// 相容 stub
+function initAllTimePickers(){}
 function updateAmPm(){}
 function updateAmPmEl(){}
 function refreshTimePicker(){}
-// OT row inline 呼叫：從 input 本身向上找 ampm span 和 24h hint
-function syncAmpmOT(inputEl) {
-  const val = inputEl.value || '';
-  const ampm = getAmPmLabel(val);
-  const row = inputEl.closest('.fld');
-  if (!row) return;
-  const ampmEl = row.querySelector('[class*="-ampm"]');
-  const h24El  = row.querySelector('[class*="-24"]');
-  if (ampmEl) ampmEl.textContent = ampm;
-  if (h24El)  h24El.textContent  = val ? '24h: ' + val : '';
-}
+function syncAmpm(){}
+function syncAmpmWrap(){}
+function syncAmpmOT(){}
 
 function calcLeaveHours() {
   const period = $('lv_period').value;
@@ -2111,19 +2175,25 @@ function ot_addWorkerRow(opts={}) {
       </div>
       <div class="fld" style="margin:0">
         <label>開始<span class="th">เริ่ม</span></label>
-        <div style="display:flex;align-items:center;gap:4px">
-          <span class="ot-start-ampm" style="font-size:11px;font-weight:600;color:var(--primary);min-width:26px;flex-shrink:0"></span>
-          <input type="time" class="ot-start" step="60" style="flex:1" oninput="syncAmpmOT(this)" onchange="syncAmpmOT(this)"/>
+        <div class="tp-wrap ot-start-wrap">
+          <span class="tp-ampm ot-start-ampm">上午</span>
+          <select class="ot-startH" onchange="otTpChange(this)"></select>
+          <span class="tp-colon">:</span>
+          <select class="ot-startM" onchange="otTpChange(this)"></select>
         </div>
-        <div class="ot-start-24" style="font-size:10px;color:var(--muted);margin-top:2px;padding-left:30px"></div>
+        <div class="tp-hint ot-start-24"></div>
+        <input type="hidden" class="ot-start" value="08:30"/>
       </div>
       <div class="fld" style="margin:0">
         <label>結束<span class="th">สิ้นสุด</span></label>
-        <div style="display:flex;align-items:center;gap:4px">
-          <span class="ot-end-ampm" style="font-size:11px;font-weight:600;color:var(--primary);min-width:26px;flex-shrink:0"></span>
-          <input type="time" class="ot-end" step="60" style="flex:1" oninput="syncAmpmOT(this)" onchange="syncAmpmOT(this)"/>
+        <div class="tp-wrap ot-end-wrap">
+          <span class="tp-ampm ot-end-ampm">上午</span>
+          <select class="ot-endH" onchange="otTpChange(this)"></select>
+          <span class="tp-colon">:</span>
+          <select class="ot-endM" onchange="otTpChange(this)"></select>
         </div>
-        <div class="ot-end-24" style="font-size:10px;color:var(--muted);margin-top:2px;padding-left:30px"></div>
+        <div class="tp-hint ot-end-24"></div>
+        <input type="hidden" class="ot-end" value="17:30"/>
       </div>
       <div class="fld" style="margin:0">
         <label>時數<span class="th">ชั่วโมง</span></label>
@@ -2156,9 +2226,7 @@ function ot_addWorkerRow(opts={}) {
     const s = div.querySelector('.ot-start').value;
     const e = div.querySelector('.ot-end').value;
     const errEl = div.querySelector('.ot-time-err');
-    // 更新上午/下午標籤 + 24h 提示
-    syncAmpmOT(div.querySelector('.ot-start'));
-    syncAmpmOT(div.querySelector('.ot-end'));
+    // 更新上午/下午標籤（由 otTpRefreshRow 處理，calcH 不需重複）
     if (!s || !e) return;
     // 防呆：結束不能早於開始（跨日允許，但提示）
     const toMin = t => { const [hh,mm]=t.split(':').map(Number); return hh*60+mm; };
@@ -2182,16 +2250,7 @@ function ot_addWorkerRow(opts={}) {
   };
   // 預設加班時間：等 CFG 確認載入後再設定（CFG 是非同步載入）
   const setOTDefaults = () => {
-    const ws = CFG.work_start || '08:30';
-    const we = CFG.work_end   || '17:30';
-    const startEl = div.querySelector('.ot-start');
-    const endEl   = div.querySelector('.ot-end');
-    // 只在使用者尚未手動填入時才套用預設值
-    if (!startEl.value) startEl.value = ws;
-    if (!endEl.value)   endEl.value   = we;
-    // 更新上午/下午標籤 + 24h 提示
-    syncAmpmOT(startEl);
-    syncAmpmOT(endEl);
+    initOtTpRow(div, CFG.work_start||'08:30', CFG.work_end||'17:30');
     hideDinnerOpt();
     calcH();
   };
