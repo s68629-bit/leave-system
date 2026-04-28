@@ -1578,71 +1578,98 @@ function initLeaveForm() {
 // ── 上午/下午標籤 + 24小時顯示輔助 ──
 // ══ 自訂時間選擇器（select版，不依賴 input[type=time]，避免locale問題）══
 // options 已在 HTML 靜態寫入，只需設 value
+// ══ 時間選擇器（與測試頁面相同邏輯）══
+
+// select.value 設定（options 已靜態寫在 HTML）
 function buildHourOpts(selEl, curH) {
   if (!selEl) return;
-  selEl.value = curH;           // 直接設 select.value
-  if (selEl.value != curH) {    // 若不在 options 裡（理論上不會），補插
-    const o = document.createElement('option');
-    o.value = curH; o.textContent = String(curH).padStart(2,'0');
-    selEl.appendChild(o);
-    selEl.value = curH;
-  }
+  selEl.value = String(curH);
 }
 function buildMinOpts(selEl, curM) {
   if (!selEl) return;
-  // 若 curM 不在 5 倍數裡（如 30 → 已在），補插
-  if (!selEl.querySelector(`option[value="${curM}"]`)) {
+  // 若 curM 不在靜態 options 裡（非5倍數），動態插入
+  if (!selEl.querySelector('option[value="' + curM + '"]')) {
     const o = document.createElement('option');
     o.value = curM; o.textContent = String(curM).padStart(2,'0');
-    // 按值排序插入
-    const opts = [...selEl.options].concat([o]).sort((a,b)=>+a.value-+b.value);
+    const opts = [...selEl.options, o].sort((a,b)=>+a.value-+b.value);
     selEl.innerHTML = '';
     opts.forEach(op => selEl.appendChild(op));
   }
-  selEl.value = curM;
+  selEl.value = String(curM);
 }
-// 讀取 leave 表單時間（永遠回傳 HH:MM 格式）
+
+// 讀取請假時間 select → HH:MM
 function getLvTime(prefix) {
-  const h = parseInt(($( prefix + 'H')||{value:0}).value, 10) || 0;
-  const m = parseInt(($( prefix + 'M')||{value:0}).value, 10) || 0;
+  const hEl = document.getElementById(prefix + 'H');
+  const mEl = document.getElementById(prefix + 'M');
+  const h = hEl ? (parseInt(hEl.value, 10) || 0) : 0;
+  const m = mEl ? (parseInt(mEl.value, 10) || 0) : 0;
   return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
 }
+
+// 更新請假 ampm 標示 + 24h hint + hidden input
 function tpRefreshLv(prefix) {
   const val = getLvTime(prefix);
-  const h = parseInt(val.split(':')[0], 10);
-  const ampmEl = $(prefix + 'Ampm');
-  const hint   = $(prefix + '24');
-  const hidden = $(prefix + 'Time');
+  const h = parseInt(val, 10);
+  const ampmEl = document.getElementById(prefix + 'Ampm');
+  const hint   = document.getElementById(prefix + '24');
+  const hidden = document.getElementById(prefix + 'Time');
   if (ampmEl) ampmEl.textContent = h < 12 ? '上午' : '下午';
   if (hint)   hint.textContent   = '24h: ' + val;
   if (hidden) hidden.value = val;
 }
-// getLvTime: 直接從 select 讀值，不依賴 hidden input
-function getLvTimeFromSel(prefix) { return getLvTime(prefix); }
-function tpChange(prefix) { tpRefreshLv(prefix); calcLeaveHours(); }
-function initLvTimePicker(sv, ev) {
-  const [sh,sm] = (sv||'08:30').split(':').map(Number);
-  const [eh,em] = (ev||'17:30').split(':').map(Number);
-  buildHourOpts($('lv_startH'), sh); buildMinOpts($('lv_startM'), sm);
-  buildHourOpts($('lv_endH'),   eh); buildMinOpts($('lv_endM'),   em);
-  tpRefreshLv('lv_start'); tpRefreshLv('lv_end');
-  // hidden input 更新後立即計算
+
+// select onchange 呼叫
+function tpChange(prefix) {
+  tpRefreshLv(prefix);
   calcLeaveHours();
 }
-// OT row
+
+// 初始化請假時間選擇器
+function initLvTimePicker(sv, ev) {
+  const parts = (t) => (t||'00:00').split(':').map(Number);
+  const [sh,sm] = parts(sv||'08:30');
+  const [eh,em] = parts(ev||'17:30');
+  buildHourOpts(document.getElementById('lv_startH'), sh);
+  buildMinOpts (document.getElementById('lv_startM'), sm);
+  buildHourOpts(document.getElementById('lv_endH'),   eh);
+  buildMinOpts (document.getElementById('lv_endM'),   em);
+  tpRefreshLv('lv_start');
+  tpRefreshLv('lv_end');
+  calcLeaveHours();
+}
+
+// 讀取 OT row 時間 select → HH:MM
+function getOtTime(row, prefix) {
+  const hEl = row.querySelector('.ot-' + prefix + 'H');
+  const mEl = row.querySelector('.ot-' + prefix + 'M');
+  if (!hEl || !mEl) return '';
+  const h = parseInt(hEl.value, 10) || 0;
+  const m = parseInt(mEl.value, 10) || 0;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
+
+// 更新 OT row 的 ampm + hint + hidden
+function otTpRefreshRow(row) {
+  ['start','end'].forEach(se => {
+    const val  = getOtTime(row, se);
+    const h    = parseInt(val, 10) || 0;
+    const ampm = row.querySelector('.ot-' + se + '-ampm');
+    const hint = row.querySelector('.ot-' + se + '-24');
+    const hid  = row.querySelector('.ot-' + se);
+    if (ampm) ampm.textContent = h < 12 ? '上午' : '下午';
+    if (hint) hint.textContent = '24h: ' + val;
+    if (hid)  hid.value = val;
+  });
+}
+
+// OT select onchange → 重算時數
 function otTpChange(selEl) {
   const row = selEl.closest('.ot-row');
   if (!row) return;
-  // 直接從 select 讀值（不依賴 hidden input）
-  const getV = prefix => {
-    const hS = row.querySelector('.ot-' + prefix + 'H');
-    const mS = row.querySelector('.ot-' + prefix + 'M');
-    if (!hS || !mS) return '';
-    return String(parseInt(hS.value,10)).padStart(2,'0') + ':' + String(parseInt(mS.value,10)).padStart(2,'0');
-  };
-  const s = getV('start'), e = getV('end');
-  // 更新 hidden input + ampm + 24h hint
   otTpRefreshRow(row);
+  const s = getOtTime(row, 'start');
+  const e = getOtTime(row, 'end');
   const errEl = row.querySelector('.ot-time-err');
   const toMin = t => { const [h,m]=t.split(':').map(Number); return h*60+m; };
   if (s && e && toMin(e) === toMin(s)) {
@@ -1653,37 +1680,25 @@ function otTpChange(selEl) {
   if (errEl) errEl.style.display = 'none';
   const skipL = row.querySelector('.ot-skip-lunch')?.checked;
   const skipD = row.querySelector('.ot-skip-dinner')?.checked;
-  const raw = calcOTHours(s, e, skipL, skipD);
+  const raw   = calcOTHours(s, e, skipL, skipD);
   row.querySelector('.ot-hours').value = raw > 0 ? raw + ' h' : '';
 }
-function otTpRefreshRow(row) {
-  ['start','end'].forEach(se => {
-    const hSel = row.querySelector('.ot-' + se + 'H');
-    const mSel = row.querySelector('.ot-' + se + 'M');
-    if (!hSel || !mSel) return;
-    const h = parseInt(hSel.value,10), m = parseInt(mSel.value,10);
-    const val = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
-    const hidden = row.querySelector('.ot-' + se);
-    const ampm   = row.querySelector('.ot-' + se + '-ampm');
-    const hint   = row.querySelector('.ot-' + se + '-24');
-    if (hidden) hidden.value = val;
-    if (ampm)   ampm.textContent = h < 12 ? '上午' : '下午';
-    if (hint)   hint.textContent = '24h: ' + val;
-  });
-}
+
+// 初始化 OT row 時間選擇器
 function initOtTpRow(row, sv, ev) {
-  const [sh,sm] = (sv||'08:30').split(':').map(Number);
-  const [eh,em] = (ev||'17:30').split(':').map(Number);
-  const sH=row.querySelector('.ot-startH'), sM=row.querySelector('.ot-startM');
-  const eH=row.querySelector('.ot-endH'),   eM=row.querySelector('.ot-endM');
-  buildHourOpts(sH,sh); buildMinOpts(sM,sm);
-  buildHourOpts(eH,eh); buildMinOpts(eM,em);
+  const parts = (t) => (t||'00:00').split(':').map(Number);
+  const [sh,sm] = parts(sv||'08:30');
+  const [eh,em] = parts(ev||'17:30');
+  buildHourOpts(row.querySelector('.ot-startH'), sh);
+  buildMinOpts (row.querySelector('.ot-startM'), sm);
+  buildHourOpts(row.querySelector('.ot-endH'),   eh);
+  buildMinOpts (row.querySelector('.ot-endM'),   em);
   otTpRefreshRow(row);
-  // 初始化後立即觸發計算
-  const anySelect = row.querySelector('.ot-startH');
-  if (anySelect) otTpChange(anySelect);
+  // 初始化後立即計算
+  otTpChange(row.querySelector('.ot-startH'));
 }
-// 相容 stub
+
+// 相容 stub（舊程式呼叫）
 function initAllTimePickers(){}
 function updateAmPm(){}
 function updateAmPmEl(){}
@@ -1691,6 +1706,7 @@ function refreshTimePicker(){}
 function syncAmpm(){}
 function syncAmpmWrap(){}
 function syncAmpmOT(){}
+function getLvTimeFromSel(p){ return getLvTime(p); }
 
 function calcLeaveHours() {
   const period = $('lv_period').value;
@@ -2235,37 +2251,11 @@ function ot_addWorkerRow(opts={}) {
     </div>
   `;
 
-  // 四-3,5: 從 select 直接讀值計算時數
-  const getOtVal = (prefix) => {
-    const hSel = div.querySelector('.ot-' + prefix + 'H');
-    const mSel = div.querySelector('.ot-' + prefix + 'M');
-    if (!hSel || !mSel) return '';
-    const h = parseInt(hSel.value, 10), m = parseInt(mSel.value, 10);
-    return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
-  };
+  // 四-3,5: 時數計算 — 由 otTpChange 統一處理，這裡只綁 skip checkbox
   const calcH = () => {
-    const s = getOtVal('start');
-    const e = getOtVal('end');
-    const errEl = div.querySelector('.ot-time-err');
-    // 同步 hidden input + ampm + 24h
-    otTpRefreshRow(div);
-    if (!s || !e) return;
-    const toMin = t => { const [hh,mm]=t.split(':').map(Number); return hh*60+mm; };
-    if (toMin(e) === toMin(s)) {
-      if (errEl) errEl.style.display = '';
-      div.querySelector('.ot-hours').value = '';
-      return;
-    }
-    if (errEl) errEl.style.display = 'none';
-    const skipLunch  = div.querySelector('.ot-skip-lunch')?.checked;
-    const skipDinner = div.querySelector('.ot-skip-dinner')?.checked;
-    const raw = calcOTHours(s, e, skipLunch, skipDinner);
-    div.querySelector('.ot-hours').value = raw > 0 ? raw + ' h' : '';
+    otTpChange(div.querySelector('.ot-startH'));
   };
-  div.querySelector('.ot-startH').onchange = calcH;
-  div.querySelector('.ot-startM').onchange = calcH;
-  div.querySelector('.ot-endH').onchange   = calcH;
-  div.querySelector('.ot-endM').onchange   = calcH;
+  // select onchange 已在 HTML inline 綁 otTpChange，這裡只需綁 checkbox
   div.querySelector('.ot-skip-lunch').onchange  = calcH;
   div.querySelector('.ot-skip-dinner').onchange = calcH;
   // 若 dinner 未設定，隱藏晚餐選項
