@@ -423,6 +423,7 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
             <input type="hidden" id="lv_startTime" value="08:30"/>
             <input type="hidden" id="lv_endTime" value="17:30"/>
             <div id="lv_timeErr" style="color:#e74c3c;font-size:12px;margin-top:6px;display:none">⚠ 結束時間不能早於開始時間</div>
+            <div id="lv_timeDebug" style="color:#856404;background:#fff3cd;font-size:11px;padding:4px 8px;border-radius:4px;margin-top:4px;display:none;font-family:monospace;word-break:break-all"></div>
           </div>
           <div class="col-8 fld" id="lv_mealRow" style="display:none">
             <label>用餐扣除<span class="th">หักมื้ออาหาร</span></label>
@@ -1720,11 +1721,19 @@ function calcLeaveHours() {
   else if (period === 'am')  h = days * 3.5;
   else if (period === 'pm')  h = days * 4.5;
   else if (period === 'hour') {
-    // 直接從 select 讀值，確保不受 hidden input 時序影響
     const st = getLvTime('lv_start');
     const et = getLvTime('lv_end');
+    // DEBUG: 顯示實際讀到的值
+    const dbg = $('lv_timeDebug');
+    if (dbg) {
+      const sh = document.getElementById('lv_startH');
+      const sm = document.getElementById('lv_startM');
+      const eh = document.getElementById('lv_endH');
+      const em = document.getElementById('lv_endM');
+      dbg.textContent = `[DEBUG] startH.value=${sh?.value} startM.value=${sm?.value} → st=${st} | endH.value=${eh?.value} endM.value=${em?.value} → et=${et}`;
+      dbg.style.display = '';
+    }
     const errEl = $('lv_timeErr');
-    // 防呆：結束不能早於開始
     if (st && et) {
       const toMin = t => { const [hh,mm]=t.split(':').map(Number); return hh*60+mm; };
       if (toMin(et) < toMin(st)) {
