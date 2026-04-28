@@ -378,11 +378,18 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
           </div>
           <div class="col-6 fld" id="lv_timeRow" style="display:none">
             <label>時間</label>
-            <div style="display:flex;gap:8px">
-              <input type="time" id="lv_startTime" style="flex:1"/>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div style="flex:1;position:relative">
+                <input type="time" id="lv_startTime" style="width:100%" onchange="updateAmPm('lv_startTime','lv_startAmPm');calcLeaveHours()"/>
+                <span id="lv_startAmPm" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--muted);pointer-events:none"></span>
+              </div>
               <span style="line-height:38px;color:var(--muted)">～</span>
-              <input type="time" id="lv_endTime" style="flex:1"/>
+              <div style="flex:1;position:relative">
+                <input type="time" id="lv_endTime" style="width:100%" onchange="updateAmPm('lv_endTime','lv_endAmPm');calcLeaveHours()"/>
+                <span id="lv_endAmPm" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--muted);pointer-events:none"></span>
+              </div>
             </div>
+            <div id="lv_timeErr" style="color:#e74c3c;font-size:12px;margin-top:2px;display:none">⚠ 結束時間不能早於開始時間</div>
           </div>
 
           <div class="col-6 fld">
@@ -1479,7 +1486,7 @@ function initLeaveForm() {
       calcLeaveHours();
     }
   };
-  ['lv_startDate','lv_endDate','lv_startTime','lv_endTime'].forEach(id=>{
+  ['lv_startDate','lv_endDate'].forEach(id=>{
     $(id).onchange = calcLeaveHours;
   });
   $('lv_type').onchange = () => {
@@ -1506,6 +1513,20 @@ function initLeaveForm() {
   drawLeaveCalendar(_calDate);
 }
 
+// AM/PM 顯示輔助（在時間 input 旁顯示上午/下午）
+function getAmPmLabel(timeStr) {
+  if (!timeStr) return '';
+  const [h] = timeStr.split(':').map(Number);
+  return h < 12 ? '上午' : '下午';
+}
+function updateAmPm(inputId, labelId) {
+  const el = $(labelId);
+  if (el) el.textContent = getAmPmLabel($(inputId)?.value || '');
+}
+function updateAmPmEl(timeStr, labelEl) {
+  if (labelEl) labelEl.textContent = getAmPmLabel(timeStr);
+}
+
 function calcLeaveHours() {
   const period = $('lv_period').value;
   const start  = $('lv_startDate').value;
@@ -1518,7 +1539,20 @@ function calcLeaveHours() {
   else if (period === 'am')  h = days * 3.5;
   else if (period === 'pm')  h = days * 4.5;
   else if (period === 'hour') {
-    const raw = calcBizHours($('lv_startTime').value, $('lv_endTime').value);
+    const st = $('lv_startTime').value;
+    const et = $('lv_endTime').value;
+    const errEl = $('lv_timeErr');
+    // 防呆：結束不能早於開始
+    if (st && et) {
+      const toMin = t => { const [hh,mm]=t.split(':').map(Number); return hh*60+mm; };
+      if (toMin(et) <= toMin(st)) {
+        errEl && (errEl.style.display = '');
+        $('lv_hours').value = '';
+        return;
+      }
+    }
+    errEl && (errEl.style.display = 'none');
+    const raw = calcBizHours(st, et);
     h = Math.round(raw * 2) / 2; // 三-2: 最小單位 0.5h
   }
   $('lv_hours').value = h > 0 ? h + ' 小時' : '';
@@ -1537,22 +1571,26 @@ function workDaysBetween(s, e) {
 }
 
 // 四-3,5 + 二-3: 加班時數計算（扣午休+晚餐，最小0.5h）
-function calcOTHours(st, et) {
+function calcOTHours(st, et, skipLunch, skipDinner) {
   if (!st || !et) return 0;
   const toMin = t => { const [h,m]=t.split(':').map(Number); return h*60+m; };
-  let total = toMin(et) - toMin(st);
-  if (total <= 0) return 0;
+  let sMin = toMin(st), eMin = toMin(et);
+  if (eMin <= sMin) eMin += 24*60; // 跨日（如 22:00 ~ 02:00）
+  if (eMin <= sMin) return 0;
+  let total = eMin - sMin;
 
-  // 扣午休
-  const ls = toMin(CFG.lunch_start||'12:00'), le = toMin(CFG.lunch_end||'13:00');
-  const s = toMin(st), e = toMin(et);
-  const lunchOverlap = Math.max(0, Math.min(le,e) - Math.max(ls,s));
-  total -= lunchOverlap;
+  // 扣午休（若未勾選「不扣午餐」）
+  if (!skipLunch) {
+    const ls = toMin(CFG.lunch_start||'12:00'), le = toMin(CFG.lunch_end||'13:00');
+    const lunchOverlap = Math.max(0, Math.min(le,eMin) - Math.max(ls,sMin));
+    total -= lunchOverlap;
+  }
 
-  // 扣晚餐（若有設定）
-  if (CFG.dinner_start && CFG.dinner_end) {
-    const ds = toMin(CFG.dinner_start), de = toMin(CFG.dinner_end);
-    const dinnerOverlap = Math.max(0, Math.min(de,e) - Math.max(ds,s));
+  // 扣晚餐（若有設定且未勾選「不扣晚餐」）
+  if (!skipDinner && CFG.dinner_start && CFG.dinner_end) {
+    const toMin2 = t => { const [h,m]=t.split(':').map(Number); return h*60+m; };
+    const ds = toMin2(CFG.dinner_start), de = toMin2(CFG.dinner_end);
+    const dinnerOverlap = Math.max(0, Math.min(de,eMin) - Math.max(ds,sMin));
     total -= dinnerOverlap;
   }
 
@@ -1563,9 +1601,13 @@ function calcOTHours(st, et) {
 function calcBizHours(st, et) {
   if (!st || !et) return 0;
   const toMin = t => { const [h,m]=t.split(':').map(Number); return h*60+m; };
-  const s=toMin(st), e=toMin(et);
-  const AS=8*60+30, AE=12*60, PS=13*60, PE=17*60+30;
-  return (Math.max(0,Math.min(AE,e)-Math.max(AS,s)) + Math.max(0,Math.min(PE,e)-Math.max(PS,s))) / 60;
+  const s = toMin(st), e = toMin(et);
+  if (e <= s) return 0; // 防呆：結束不能早於開始
+  const AS = toMin(CFG.work_start || '08:30');
+  const AE = toMin(CFG.lunch_start || '12:00');
+  const PS = toMin(CFG.lunch_end   || '13:00');
+  const PE = toMin(CFG.work_end    || '17:30');
+  return (Math.max(0, Math.min(AE,e) - Math.max(AS,s)) + Math.max(0, Math.min(PE,e) - Math.max(PS,s))) / 60;
 }
 
 function getLeaveHours() {
@@ -1956,17 +1998,34 @@ function ot_addWorkerRow(opts={}) {
       </div>
       <div class="fld" style="margin:0">
         <label>開始<span class="th">เริ่ม</span></label>
-        <input type="time" class="ot-start" step="60" style="width:100%"/>
+        <div style="position:relative">
+          <span class="ot-start-ampm" style="position:absolute;left:5px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--muted);pointer-events:none;z-index:1"></span>
+          <input type="time" class="ot-start" step="60" style="width:100%"/>
+        </div>
       </div>
       <div class="fld" style="margin:0">
         <label>結束<span class="th">สิ้นสุด</span></label>
-        <input type="time" class="ot-end" step="60" style="width:100%"/>
+        <div style="position:relative">
+          <span class="ot-end-ampm" style="position:absolute;left:5px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--muted);pointer-events:none;z-index:1"></span>
+          <input type="time" class="ot-end" step="60" style="width:100%"/>
+        </div>
       </div>
       <div class="fld" style="margin:0">
         <label>時數<span class="th">ชั่วโมง</span></label>
         <input type="text" class="ot-hours" style="width:100%" readonly placeholder="自動"/>
       </div>
       ${id > 1 ? `<div style="padding-bottom:2px"><button onclick="document.getElementById('ot_w_${id}').remove()" class="btn btn-danger" style="width:36px;padding:8px 0;font-size:14px">✕</button></div>` : ''}
+    </div>
+    <div class="ot-time-err" style="color:#e74c3c;font-size:12px;margin:-4px 0 4px;display:none">⚠ 結束時間不能早於開始時間（跨日加班請確認）</div>
+    <div style="display:flex;gap:16px;margin-bottom:6px;font-size:13px">
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+        <input type="checkbox" class="ot-skip-lunch"/>
+        不扣午餐 / ไม่หักพักกลางวัน
+      </label>
+      <label class="ot-dinner-opt" style="display:flex;align-items:center;gap:4px;cursor:pointer">
+        <input type="checkbox" class="ot-skip-dinner"/>
+        不扣晚餐 / ไม่หักมื้อเย็น
+      </label>
     </div>
     <div class="ot-other" style="display:none;margin-bottom:8px">
       <div class="fld" style="margin:0"><label>其他人員姓名<span class="th">ชื่อพนักงาน</span></label><input type="text" class="ot-other-name" placeholder="姓名" style="width:200px"/></div>
@@ -1981,12 +2040,29 @@ function ot_addWorkerRow(opts={}) {
   const calcH = () => {
     const s = div.querySelector('.ot-start').value;
     const e = div.querySelector('.ot-end').value;
+    const errEl = div.querySelector('.ot-time-err');
+    // 更新 AM/PM 標示
+    updateAmPmEl(s, div.querySelector('.ot-start-ampm'));
+    updateAmPmEl(e, div.querySelector('.ot-end-ampm'));
     if (!s || !e) return;
-    const raw = calcOTHours(s, e);
+    // 防呆：結束不能早於開始（跨日允許，但提示）
+    const toMin = t => { const [hh,mm]=t.split(':').map(Number); return hh*60+mm; };
+    if (toMin(e) === toMin(s)) { errEl && (errEl.style.display = ''); div.querySelector('.ot-hours').value = ''; return; }
+    errEl && (errEl.style.display = 'none');
+    const skipLunch  = div.querySelector('.ot-skip-lunch')?.checked;
+    const skipDinner = div.querySelector('.ot-skip-dinner')?.checked;
+    const raw = calcOTHours(s, e, skipLunch, skipDinner);
     div.querySelector('.ot-hours').value = raw > 0 ? raw + ' h' : '';
   };
   div.querySelector('.ot-start').onchange = calcH;
   div.querySelector('.ot-end').onchange   = calcH;
+  div.querySelector('.ot-skip-lunch').onchange  = calcH;
+  div.querySelector('.ot-skip-dinner').onchange = calcH;
+  // 若 dinner 未設定，隱藏晚餐選項
+  const hideDinnerOpt = () => {
+    const hasDinner = CFG.dinner_start && CFG.dinner_end;
+    div.querySelectorAll('.ot-dinner-opt').forEach(el => el.style.display = hasDinner ? '' : 'none');
+  };
   // 預設加班時間：等 CFG 確認載入後再設定（CFG 是非同步載入）
   const setOTDefaults = () => {
     const ws = CFG.work_start || '08:30';
@@ -1996,6 +2072,7 @@ function ot_addWorkerRow(opts={}) {
     // 只在使用者尚未手動填入時才套用預設值
     if (!startEl.value) startEl.value = ws;
     if (!endEl.value)   endEl.value   = we;
+    hideDinnerOpt();
     calcH();
   };
   // 等待 CFG 載入完成後再設定預設時間（確保 lunch_start 等設定已就緒）
