@@ -1730,9 +1730,15 @@ function calcLeaveHours() {
       const sm = document.getElementById('lv_startM');
       const eh = document.getElementById('lv_endH');
       const em = document.getElementById('lv_endM');
-      const rawResult = calcBizHours(st, et, $('lv_skipLunch')?.checked, $('lv_skipDinner')?.checked);
+      const skipL = $('lv_skipLunch')?.checked;
+      const skipD = $('lv_skipDinner')?.checked;
+      const rawResult = calcBizHours(st, et, skipL, skipD);
       const roundedResult = Math.round(rawResult * 2) / 2;
-      dbg.textContent = `[DEBUG] st=${st} et=${et} | calcBizHours raw=${rawResult} rounded=${roundedResult} | period=${$('lv_period').value}`;
+      const toMinDbg = t => { const [h,m]=(t||'').split(':').map(Number); return h*60+m; };
+      const s2=toMinDbg(st), e2=toMinDbg(et);
+      const ls=toMinDbg(CFG.lunch_start||'12:00'), le=toMinDbg(CFG.lunch_end||'13:00');
+      const lunchOv=Math.max(0,Math.min(le,e2)-Math.max(ls,s2));
+      dbg.textContent = `[DEBUG] st=${st}(${s2}min) et=${et}(${e2}min) total=${e2-s2}min | lunch=${CFG.lunch_start||'12:00'}(${ls})-${CFG.lunch_end||'13:00'}(${le}) ov=${lunchOv}min | raw=${rawResult} rounded=${roundedResult} | period=${$('lv_period').value}`;
       dbg.style.display = '';
     }
     const errEl = $('lv_timeErr');
