@@ -284,6 +284,21 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
 }
 .tp-wrap .tp-colon { font-size: 15px; font-weight: 700; color: var(--text); }
 .tp-hint { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+@media (max-width: 600px) {
+  /* 手機：日期欄縮小字體 */
+  .fld input[type="date"] {
+    font-size: 13px;
+    padding: 8px 10px;
+  }
+  /* 手機：tab 導覽列縮小 */
+  .tab-btn { padding: 8px 6px; font-size: 11px; }
+  .tab-btn .tab-icon { font-size: 14px; }
+  /* 手機：加班 ot-row checkbox 標籤不要換行 */
+  .ot-row .fld > label { min-height: unset; }
+  /* 手機：col-6 改全寬 */
+  .col-6 { width: 100% !important; }
+}
 </style>
 </head>
 <body>
@@ -2235,14 +2250,14 @@ function ot_addWorkerRow(opts={}) {
     + `<option value="__other">其他</option>`;
 
   div.innerHTML = `
-    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 80px${id>1?' 40px':''};gap:8px;align-items:start;margin-bottom:8px">
-      <div class="fld" style="margin:0">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;margin-bottom:8px">
+      <div class="fld" style="margin:0;flex:2;min-width:160px">
         <label>加班人<span class="th">พนักงาน</span></label>
         <select class="ot-worker-sel" style="width:100%">
           ${names}
         </select>
       </div>
-      <div class="fld" style="margin:0">
+      <div class="fld" style="margin:0;flex:1;min-width:100px">
         <label>加班類別<span class="th">ประเภทโอที</span></label>
         <select class="ot-cat" style="width:100%">
           <option value="平日">平日 / วันธรรมดา</option>
@@ -2250,7 +2265,7 @@ function ot_addWorkerRow(opts={}) {
           <option value="國定">วันหยุดนักขัตฤกษ์</option>
         </select>
       </div>
-      <div class="fld" style="margin:0">
+      <div class="fld" style="margin:0;flex:1;min-width:110px">
         <label>開始<span class="th">เริ่ม</span></label>
         <div class="tp-wrap ot-start-wrap">
           <span class="tp-ampm ot-start-ampm">上午</span>
@@ -2261,7 +2276,7 @@ function ot_addWorkerRow(opts={}) {
         <div class="tp-hint ot-start-24"></div>
         <input type="hidden" class="ot-start" value="08:30"/>
       </div>
-      <div class="fld" style="margin:0">
+      <div class="fld" style="margin:0;flex:1;min-width:110px">
         <label>結束<span class="th">สิ้นสุด</span></label>
         <div class="tp-wrap ot-end-wrap">
           <span class="tp-ampm ot-end-ampm">上午</span>
@@ -2272,7 +2287,7 @@ function ot_addWorkerRow(opts={}) {
         <div class="tp-hint ot-end-24"></div>
         <input type="hidden" class="ot-end" value="17:30"/>
       </div>
-      <div class="fld" style="margin:0">
+      <div class="fld" style="margin:0;flex:0 0 80px">
         <label>時數<span class="th">ชั่วโมง</span></label>
         <input type="text" class="ot-hours" style="width:100%" readonly placeholder="自動"/>
       </div>
