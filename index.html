@@ -423,7 +423,6 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
             <input type="hidden" id="lv_startTime" value="08:30"/>
             <input type="hidden" id="lv_endTime" value="17:30"/>
             <div id="lv_timeErr" style="color:#e74c3c;font-size:12px;margin-top:6px;display:none">⚠ 結束時間不能早於開始時間</div>
-            <div id="lv_timeDebug" style="color:#856404;background:#fff3cd;font-size:11px;padding:4px 8px;border-radius:4px;margin-top:4px;display:none;font-family:monospace;word-break:break-all"></div>
           </div>
           <div class="col-8 fld" id="lv_mealRow" style="display:none">
             <label>用餐扣除<span class="th">หักมื้ออาหาร</span></label>
@@ -1723,26 +1722,6 @@ function calcLeaveHours() {
   else if (period === 'hour') {
     const st = getLvTime('lv_start');
     const et = getLvTime('lv_end');
-    // DEBUG: 顯示實際讀到的值
-    const dbg = $('lv_timeDebug');
-    if (dbg) {
-      const sh = document.getElementById('lv_startH');
-      const sm = document.getElementById('lv_startM');
-      const eh = document.getElementById('lv_endH');
-      const em = document.getElementById('lv_endM');
-      const skipL = $('lv_skipLunch')?.checked;
-      const skipD = $('lv_skipDinner')?.checked;
-      const rawResult = calcBizHours(st, et, skipL, skipD);
-      const roundedResult = Math.round(rawResult * 2) / 2;
-      const toMinDbg = t => { const [h,m]=(t||'').split(':').map(Number); return h*60+m; };
-      const s2=toMinDbg(st), e2=toMinDbg(et);
-      const lsVal = CFG.lunch_start||'12:00';
-      const leVal = CFG.lunch_end||'13:00';
-      const ls=toMinDbg(lsVal), le=toMinDbg(leVal);
-      const lunchOv=Math.max(0,Math.min(le,e2)-Math.max(ls,s2));
-      dbg.innerHTML = `[DEBUG] st=${st} et=${et} | <b>CFG.lunch_start="${CFG.lunch_start}" CFG.lunch_end="${CFG.lunch_end}"</b> | ls=${ls} le=${le} ov=${lunchOv}min | raw=${rawResult} rounded=${roundedResult}`;
-      dbg.style.display = '';
-    }
     const errEl = $('lv_timeErr');
     if (st && et) {
       const toMin = t => { const [hh,mm]=t.split(':').map(Number); return hh*60+mm; };
@@ -1791,7 +1770,10 @@ function calcOTHours(st, et, skipLunch, skipDinner) {
 
   // 扣午休（若未勾選「不扣午餐」）
   if (!skipLunch) {
-    const ls = toMin(CFG.lunch_start||'12:00'), le = toMin(CFG.lunch_end||'13:00');
+    let ls = toMin(CFG.lunch_start||'12:00'), le = toMin(CFG.lunch_end||'13:00');
+    if (ls < toMin('09:00') || ls > toMin('14:00') || le <= ls) {
+      ls = toMin('12:00'); le = toMin('13:00');
+    }
     const lunchOverlap = Math.max(0, Math.min(le,eMin) - Math.max(ls,sMin));
     total -= lunchOverlap;
   }
@@ -1823,8 +1805,12 @@ function calcBizHours(st, et, skipLunch, skipDinner) {
   let total = e - s;
   // 扣除午休重疊（未勾「不扣午餐」才扣）
   if (!skipLunch) {
-    const ls = toMin(CFG.lunch_start || '12:00');
-    const le = toMin(CFG.lunch_end   || '13:00');
+    // 保護：lunch_start 必須介於 09:00~14:00 才合理，否則用預設 12:00-13:00
+    let ls = toMin(CFG.lunch_start || '12:00');
+    let le = toMin(CFG.lunch_end   || '13:00');
+    if (ls < toMin('09:00') || ls > toMin('14:00') || le <= ls) {
+      ls = toMin('12:00'); le = toMin('13:00');
+    }
     total -= Math.max(0, Math.min(le, e) - Math.max(ls, s));
   }
   // 扣除晚餐重疊（若系統有設定且未勾「不扣晚餐」）
