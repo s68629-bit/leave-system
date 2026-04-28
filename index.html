@@ -1736,9 +1736,11 @@ function calcLeaveHours() {
       const roundedResult = Math.round(rawResult * 2) / 2;
       const toMinDbg = t => { const [h,m]=(t||'').split(':').map(Number); return h*60+m; };
       const s2=toMinDbg(st), e2=toMinDbg(et);
-      const ls=toMinDbg(CFG.lunch_start||'12:00'), le=toMinDbg(CFG.lunch_end||'13:00');
+      const lsVal = CFG.lunch_start||'12:00';
+      const leVal = CFG.lunch_end||'13:00';
+      const ls=toMinDbg(lsVal), le=toMinDbg(leVal);
       const lunchOv=Math.max(0,Math.min(le,e2)-Math.max(ls,s2));
-      dbg.textContent = `[DEBUG] st=${st}(${s2}min) et=${et}(${e2}min) total=${e2-s2}min | lunch=${CFG.lunch_start||'12:00'}(${ls})-${CFG.lunch_end||'13:00'}(${le}) ov=${lunchOv}min | raw=${rawResult} rounded=${roundedResult} | period=${$('lv_period').value}`;
+      dbg.innerHTML = `[DEBUG] st=${st} et=${et} | <b>CFG.lunch_start="${CFG.lunch_start}" CFG.lunch_end="${CFG.lunch_end}"</b> | ls=${ls} le=${le} ov=${lunchOv}min | raw=${rawResult} rounded=${roundedResult}`;
       dbg.style.display = '';
     }
     const errEl = $('lv_timeErr');
