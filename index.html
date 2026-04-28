@@ -1698,6 +1698,41 @@ function initOtTpRow(row, sv, ev) {
   otTpChange(row.querySelector('.ot-startH'));
 }
 
+// 系統設定時間選擇器
+function cfgTpInit(key, val) {
+  if (!val) return;
+  const [hh, mm] = val.split(':').map(Number);
+  const hSel = document.getElementById('cfg_' + key + '_h');
+  const mSel = document.getElementById('cfg_' + key + '_m');
+  if (!hSel || !mSel) return;
+  // 確保 mm 在 options 裡
+  if (!mSel.querySelector('option[value="' + mm + '"]')) {
+    const o = document.createElement('option');
+    o.value = mm; o.textContent = String(mm).padStart(2,'0');
+    const opts = [...mSel.options, o].sort((a,b)=>+a.value-+b.value);
+    mSel.innerHTML = '';
+    opts.forEach(op => mSel.appendChild(op));
+  }
+  hSel.value = String(hh);
+  mSel.value = String(mm);
+  cfgTpRefresh(key);
+}
+function cfgTpChange(key) {
+  cfgTpRefresh(key);
+}
+function cfgTpRefresh(key) {
+  const hSel = document.getElementById('cfg_' + key + '_h');
+  const mSel = document.getElementById('cfg_' + key + '_m');
+  const ampm = document.getElementById('cfg_' + key + '_ampm');
+  const hidden = document.getElementById('cfg_' + key);
+  if (!hSel || !mSel) return;
+  const h = parseInt(hSel.value, 10) || 0;
+  const m = parseInt(mSel.value, 10) || 0;
+  const val = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+  if (ampm) ampm.textContent = h < 12 ? '上午' : '下午';
+  if (hidden) hidden.value = val;
+}
+
 // 相容 stub（舊程式呼叫）
 function initAllTimePickers(){}
 function updateAmPm(){}
@@ -3494,10 +3529,29 @@ async function loadCfg() {
       };
       // 後端有值用後端值，否則用預設值（空字串也走 fallback）
       const val = CFG[m.key] || CFG_DEFAULTS[m.key] || '';
-      input=`<input type="${m.type}" id="cfg_${m.key}" value="${val}"/>`;
+      if (m.type === 'time') {
+        // 改用 select 避免 input[type=time] 的 locale 問題
+        const hoursOpts = Array.from({length:24},(_,h)=>`<option value="${h}">${String(h).padStart(2,'0')}</option>`).join('');
+        const minsOpts  = [0,5,10,15,20,25,30,35,40,45,50,55].map(m=>`<option value="${m}">${String(m).padStart(2,'0')}</option>`).join('');
+        const [vh='8', vm='0'] = val ? val.split(':') : ['8','0'];
+        input = `<div class="tp-wrap" style="display:inline-flex;min-width:140px">
+          <span class="tp-ampm" id="cfg_${m.key}_ampm" style="min-width:28px">--</span>
+          <select id="cfg_${m.key}_h" onchange="cfgTpChange('${m.key}')" style="width:48px">${hoursOpts}</select>
+          <span class="tp-colon">:</span>
+          <select id="cfg_${m.key}_m" onchange="cfgTpChange('${m.key}')" style="width:48px">${minsOpts}</select>
+        </div>
+        <input type="hidden" id="cfg_${m.key}" value="${val}"/>`;
+      } else {
+        input=`<input type="${m.type}" id="cfg_${m.key}" value="${val}"/>`;
+      }
     }
     row.innerHTML=`<div class="cfg-label">${m.label}<div class="cfg-desc">${m.desc}</div></div><div class="cfg-input">${input}</div>`;
     container.appendChild(row);
+    // 若是時間欄位，初始化 select 值
+    if (m.type === 'time') {
+      const cfgVal = CFG[m.key] || CFG_DEFAULTS[m.key] || '';
+      cfgTpInit(m.key, cfgVal);
+    }
   });
 }
 
