@@ -1730,7 +1730,9 @@ function calcLeaveHours() {
       const sm = document.getElementById('lv_startM');
       const eh = document.getElementById('lv_endH');
       const em = document.getElementById('lv_endM');
-      dbg.textContent = `[DEBUG] startH.value=${sh?.value} startM.value=${sm?.value} → st=${st} | endH.value=${eh?.value} endM.value=${em?.value} → et=${et}`;
+      const rawResult = calcBizHours(st, et, $('lv_skipLunch')?.checked, $('lv_skipDinner')?.checked);
+      const roundedResult = Math.round(rawResult * 2) / 2;
+      dbg.textContent = `[DEBUG] st=${st} et=${et} | calcBizHours raw=${rawResult} rounded=${roundedResult} | period=${$('lv_period').value}`;
       dbg.style.display = '';
     }
     const errEl = $('lv_timeErr');
