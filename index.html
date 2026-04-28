@@ -133,7 +133,13 @@ body{font-family:"Noto Sans TC",system-ui,sans-serif;background:var(--bg);color:
 .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
 .col-3{grid-column:span 3}.col-4{grid-column:span 4}.col-5{grid-column:span 5}
 .col-6{grid-column:span 6}.col-8{grid-column:span 8}.col-12{grid-column:span 12}
-@media(max-width:760px){.col-3,.col-4,.col-5,.col-6,.col-8{grid-column:span 12}}
+@media(max-width:760px){
+  .col-3,.col-5,.col-8{grid-column:span 12}
+  /* col-4: 三欄並排（申請人/工號/部門、填寫/加班日期） */
+  .col-4{grid-column:span 4}
+  /* col-6: 預設全寬，日期起迄並排用 inline style 強制 span 6 */
+  .col-6{grid-column:span 12}
+}
 .fld label{display:block;font-weight:700;font-size:12px;letter-spacing:.3px;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
 .fld input[type="date"],.fld input[type="time"],.fld input[type="text"],
 .fld select,.fld textarea{
@@ -301,6 +307,11 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
   /* 手機：col-6 維持並排，只有很窄時才換行 */
   /* .col-6 { width: 100% !important; } */
 }
+
+@media(max-width:480px){
+  /* 極窄手機：申請人/工號/部門改兩欄，日期欄各半 */
+  .col-4{grid-column:span 6}
+}
 </style>
 </head>
 <body>
@@ -402,11 +413,11 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
             </select>
           </div>
 
-          <div class="col-6 fld">
+          <div class="col-6 fld" style="grid-column:span 6">
             <label>請假日期（起）<span class="th">วันที่เริ่มลา</span></label>
             <input type="date" id="lv_startDate"/>
           </div>
-          <div class="col-6 fld">
+          <div class="col-6 fld" style="grid-column:span 6">
             <label>請假日期（迄）<span class="th">วันที่สิ้นสุด</span></label>
             <input type="date" id="lv_endDate"/>
           </div>
@@ -533,11 +544,11 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
             <input type="text" id="ot_dept" readonly/>
           </div>
 
-          <div class="col-4 fld">
+          <div class="col-4 fld" style="grid-column:span 4">
             <label>填寫日期<span class="th">วันที่กรอก</span></label>
             <input type="date" id="ot_applyDate"/>
           </div>
-          <div class="col-4 fld">
+          <div class="col-4 fld" style="grid-column:span 4">
             <label>加班日期<span class="th">วันที่ทำโอที</span></label>
             <input type="date" id="ot_date"/>
           </div>
