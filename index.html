@@ -286,18 +286,20 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
 .tp-hint { font-size: 11px; color: var(--muted); margin-top: 3px; }
 
 @media (max-width: 600px) {
-  /* 手機：日期欄縮小字體 */
+  /* 手機：日期欄字體強制縮小 */
   .fld input[type="date"] {
-    font-size: 13px;
-    padding: 8px 10px;
+    font-size: 13px !important;
+    padding: 6px 8px;
+    -webkit-appearance: none;
+    appearance: none;
   }
   /* 手機：tab 導覽列縮小 */
   .tab-btn { padding: 8px 6px; font-size: 11px; }
   .tab-btn .tab-icon { font-size: 14px; }
   /* 手機：加班 ot-row checkbox 標籤不要換行 */
   .ot-row .fld > label { min-height: unset; }
-  /* 手機：col-6 改全寬 */
-  .col-6 { width: 100% !important; }
+  /* 手機：col-6 維持並排，只有很窄時才換行 */
+  /* .col-6 { width: 100% !important; } */
 }
 </style>
 </head>
