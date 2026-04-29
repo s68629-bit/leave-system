@@ -659,38 +659,92 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
     <!-- ═══ 主管總覽 ═══ -->
     <div class="pane" id="pane_mgr">
-      <div class="card">
-        <div class="card-title"><span class="icon">👔</span>部門/全公司總覽</div>
-        <div class="toolbar">
-          <input type="month" id="mgr_month"/>
-          <select id="mgr_empId">
-            <option value="">全部人員</option>
-          </select>
-          <select id="mgr_type">
-            <option value="">全部假別</option>
-            <option value="特休">特休 / วันหยุดพักร้อน</option><option value="補休">加班/補休 / ชดเชยโอที</option>
-            <option value="事假">事假 / ลากิจ</option><option value="病假">病假 / ลาป่วย</option>
-          </select>
-          <button class="btn btn-secondary" id="mgr_load" onclick="loadMgrLeaves()">🔍 查詢</button>
-          <button class="btn btn-ok" id="mgr_export" onclick="exportExcel()">📥 匯出 Excel</button>
-        </div>
-        <div class="tbl-wrap">
-          <table id="mgr_tbl">
-            <thead>
-              <tr><th>姓名</th><th>部門</th><th>假別</th><th>日期（起）</th><th>日期（迄）</th><th>時數</th><th>原因</th><th>狀態</th><th id="mgr_th_action" style="display:none">操作</th></tr>
-            </thead>
-            <tbody id="mgr_tbody"></tbody>
-          </table>
-        </div>
-        <div id="mgr_empty" class="loading" style="display:none">查無資料 / ไม่พบข้อมูล</div>
+
+      <!-- Tab 切換：請假 / 加班 -->
+      <div class="admin-tabs" id="mgr_tabs">
+        <button class="admin-tab active" data-mtab="leave" onclick="switchMgrTab('leave')">📋 請假總覽 <span style="font-size:10px;opacity:.7">ภาพรวมการลา</span></button>
+        <button class="admin-tab" data-mtab="ot" onclick="switchMgrTab('ot')">⏱ 加班總覽 <span style="font-size:10px;opacity:.7">ภาพรวมโอที</span></button>
       </div>
 
-      <!-- 餘額報表 -->
-      <div class="card">
-        <div class="card-title"><span class="icon">📊</span>人員餘額總表</div>
-        <div id="mgr_bal_loading" class="loading" style="display:none"><div class="spinner"></div><br>載入中...</div>
-        <div id="mgr_bal_tree"></div>
+      <!-- 請假總覽 -->
+      <div id="mgr_pane_leave">
+        <div class="card">
+          <div class="card-title"><span class="icon">👔</span>請假總覽 ภาพรวมการลา</div>
+          <div class="toolbar">
+            <input type="month" id="mgr_month"/>
+            <select id="mgr_empId">
+              <option value="">全部人員</option>
+            </select>
+            <select id="mgr_type">
+              <option value="">全部假別</option>
+              <option value="特休">特休 / วันหยุดพักร้อน</option><option value="補休">加班/補休 / ชดเชยโอที</option>
+              <option value="事假">事假 / ลากิจ</option><option value="病假">病假 / ลาป่วย</option>
+            </select>
+            <button class="btn btn-secondary" id="mgr_load" onclick="loadMgrLeaves()">🔍 查詢</button>
+            <button class="btn btn-ok" id="mgr_export" onclick="exportExcel()">📥 匯出 Excel</button>
+          </div>
+          <div class="tbl-wrap">
+            <table id="mgr_tbl">
+              <thead>
+                <tr><th>姓名</th><th>部門</th><th>假別</th><th>日期（起）</th><th>日期（迄）</th><th>時數</th><th>原因</th><th>狀態</th><th id="mgr_th_action" style="display:none">操作</th></tr>
+              </thead>
+              <tbody id="mgr_tbody"></tbody>
+            </table>
+          </div>
+          <div id="mgr_empty" class="loading" style="display:none">查無資料 / ไม่พบข้อมูล</div>
+        </div>
+        <!-- 餘額報表 -->
+        <div class="card">
+          <div class="card-title"><span class="icon">📊</span>人員餘額總表</div>
+          <div id="mgr_bal_loading" class="loading" style="display:none"><div class="spinner"></div><br>載入中...</div>
+          <div id="mgr_bal_tree"></div>
+        </div>
       </div>
+
+      <!-- 加班總覽 -->
+      <div id="mgr_pane_ot" style="display:none">
+        <div class="card">
+          <div class="card-title"><span class="icon">⏱</span>加班總覽 ภาพรวมโอที</div>
+          <div class="toolbar">
+            <input type="month" id="mgr_ot_month"/>
+            <select id="mgr_ot_empId">
+              <option value="">全部人員</option>
+            </select>
+            <select id="mgr_ot_cat">
+              <option value="">全部類別</option>
+              <option value="平日">平日 / วันธรรมดา</option>
+              <option value="例假">例假日</option>
+              <option value="國定">國定假日</option>
+            </select>
+            <button class="btn btn-secondary" onclick="loadMgrOT()">🔍 查詢</button>
+            <button class="btn btn-ok" onclick="exportOTExcel()">📥 匯出 Excel</button>
+          </div>
+          <div class="tbl-wrap">
+            <table id="mgr_ot_tbl">
+              <thead>
+                <tr>
+                  <th>姓名<br><span class="th">ชื่อ</span></th>
+                  <th>部門<br><span class="th">แผนก</span></th>
+                  <th>加班日期<br><span class="th">วันที่โอที</span></th>
+                  <th>類別<br><span class="th">ประเภท</span></th>
+                  <th>時間<br><span class="th">เวลา</span></th>
+                  <th>時數<br><span class="th">ชั่วโมง</span></th>
+                  <th>原因<br><span class="th">เหตุผล</span></th>
+                  <th>狀態<br><span class="th">สถานะ</span></th>
+                </tr>
+              </thead>
+              <tbody id="mgr_ot_tbody"></tbody>
+            </table>
+          </div>
+          <div id="mgr_ot_empty" class="loading" style="display:none">查無資料 / ไม่พบข้อมูล</div>
+        </div>
+        <!-- 加班統計 -->
+        <div class="card">
+          <div class="card-title"><span class="icon">📊</span>加班時數統計</div>
+          <div id="mgr_ot_stat"></div>
+        </div>
+      </div>
+
     </div>
 
     <!-- ═══ 管理後台 ═══ -->
@@ -1539,7 +1593,15 @@ function initTabs() {
           document.querySelectorAll('.tab-btn')[0].click();
           return;
         }
-        const doMgr = () => { fillMgrEmpSelect(); loadMgrLeaves(); loadAllBalances(); };
+        const doMgr = () => {
+    fillMgrEmpSelect();
+    loadMgrLeaves();
+    loadAllBalances();
+    // 加班總覽預設月份
+    const today = new Date();
+    const ym = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0');
+    if ($('mgr_ot_month') && !$('mgr_ot_month').value) $('mgr_ot_month').value = ym;
+  };
         if (EMP_LIST.length === 0) {
           api({action:'getEmployees'}).then(r => { if(r.success) EMP_LIST=r.data; doMgr(); });
         } else { doMgr(); }
@@ -2886,6 +2948,121 @@ function fillMgrEmpSelect() {
     opt.textContent = `${e.name}（${e.dept}）`;
     sel.appendChild(opt);
   });
+  // 同步填加班總覽人員下拉
+  fillMgrOTEmpSelect();
+}
+
+// 主管總覽 Tab 切換
+function switchMgrTab(tab) {
+  document.querySelectorAll('#mgr_tabs .admin-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.mtab === tab);
+  });
+  $('mgr_pane_leave').style.display = tab === 'leave' ? '' : 'none';
+  $('mgr_pane_ot').style.display    = tab === 'ot'    ? '' : 'none';
+  if (tab === 'ot') loadMgrOT();
+}
+
+// 填充加班總覽人員下拉
+function fillMgrOTEmpSelect() {
+  const sel = $('mgr_ot_empId');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">全部人員</option>';
+  (EMP_LIST || []).forEach(e => {
+    const o = document.createElement('option');
+    o.value = e.emp_id;
+    o.textContent = `${e.name}（${e.dept||''}）`;
+    sel.appendChild(o);
+  });
+  sel.value = cur;
+}
+
+// 載入加班總覽
+async function loadMgrOT() {
+  const tbody = $('mgr_ot_tbody');
+  const statDiv = $('mgr_ot_stat');
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted)">載入中...</td></tr>';
+  $('mgr_ot_empty').style.display = 'none';
+
+  const params = { action:'getOvertimes' };
+  const month = $('mgr_ot_month').value;
+  const empId = $('mgr_ot_empId').value;
+  const cat   = $('mgr_ot_cat').value;
+  if (month) params.month = month;
+  if (empId) params.emp_id = String(empId);
+
+  const res = await api(params);
+  tbody.innerHTML = '';
+
+  if (!res.success) {
+    $('mgr_ot_empty').style.display = '';
+    $('mgr_ot_empty').textContent = '查詢失敗：' + res.message;
+    return;
+  }
+
+  let rows = (res.data || [])
+    .filter(r => r.status !== 'cancelled')
+    .filter(r => !cat || r.period_type === cat)
+    .filter(r => !empId || String(r.emp_id) === String(empId));
+
+  // supervisor 部門雙保險
+  if (!hasRole('manager')) {
+    const allowedDepts = [SESSION.dept];
+    if (SESSION.extra_depts) String(SESSION.extra_depts).split(',').map(d=>d.trim()).filter(Boolean).forEach(d=>allowedDepts.push(d));
+    rows = rows.filter(r => !r.dept || allowedDepts.includes(r.dept));
+  }
+
+  if (!rows.length) {
+    $('mgr_ot_empty').style.display = '';
+    $('mgr_ot_empty').textContent = '查無符合條件的加班記錄';
+    return;
+  }
+
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    const timeStr = r.start_time && r.end_time ? `${r.start_time} ~ ${r.end_time}` : '';
+    tr.innerHTML = `
+      <td>${r.name||''}</td>
+      <td>${r.dept||''}</td>
+      <td>${toLocalDate(r.ot_date)}</td>
+      <td><span class="tag tag-blue">${r.period_type||'平日'}</span></td>
+      <td style="font-size:12px">${timeStr}</td>
+      <td>${r.hours||''} h</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.reason||''}">${r.reason||''}</td>
+      <td><span class="tag ${r.status==='cancelled'?'tag-red':'tag-green'}">${r.status==='cancelled'?'已取消 ยกเลิก':'有效 มีผล'}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // 統計：各人員加班時數合計
+  const statMap = {};
+  rows.forEach(r => {
+    const key = `${r.name}（${r.dept||''}）`;
+    statMap[key] = (statMap[key] || 0) + (parseFloat(r.hours) || 0);
+  });
+  const sorted = Object.entries(statMap).sort((a,b) => b[1]-a[1]);
+  const totalH = rows.reduce((s,r)=>s+(parseFloat(r.hours)||0),0);
+  const cards = sorted.map(([name, h]) =>
+    '<div style="background:rgba(234,108,0,0.12);border-radius:8px;padding:8px 14px;min-width:120px">' +
+    '<div style="font-size:12px;color:var(--muted)">' + name + '</div>' +
+    '<div style="font-size:20px;font-weight:800;color:var(--primary)">' + h + ' <span style="font-size:12px">h</span></div></div>'
+  ).join('');
+  statDiv.innerHTML =
+    '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">' + cards + '</div>' +
+    '<div style="margin-top:8px;font-size:12px;color:var(--muted)">共 ' + rows.length + ' 筆，合計 ' + totalH + ' 小時</div>';
+}
+
+// 加班匯出 Excel（簡易版：輸出 CSV）
+function exportOTExcel() {
+  const rows = Array.from($('mgr_ot_tbody').querySelectorAll('tr')).map(tr =>
+    Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim()).join(',')
+  );
+  const header = '姓名,部門,加班日期,類別,時間,時數,原因,狀態';
+  const csv = '\uFEFF' + header + '\n' + rows.join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  a.download = `加班總覽_${$('mgr_ot_month').value||'全部'}.csv`;
+  a.click();
 }
 
 async function loadMgrLeaves() {
