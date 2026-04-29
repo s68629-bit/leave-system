@@ -677,8 +677,14 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
             </select>
             <select id="mgr_type">
               <option value="">全部假別</option>
-              <option value="特休">特休 / วันหยุดพักร้อน</option><option value="補休">加班/補休 / ชดเชยโอที</option>
-              <option value="事假">事假 / ลากิจ</option><option value="病假">病假 / ลาป่วย</option>
+              <option value="特休">特休 / วันหยุดพักร้อน</option>
+              <option value="事假">事假 / ลากิจ</option>
+              <option value="病假">病假 / ลาป่วย</option>
+              <option value="生理假">生理假 / ลาประจำเดือน</option>
+              <option value="婚假">婚假 / ลาแต่งงาน</option>
+              <option value="喪假">喪假 / ลางานศพ</option>
+              <option value="產假">產假 / ลาคลอด</option>
+              <option value="公假">公假 / ลากิจราชการ</option>
             </select>
             <button class="btn btn-secondary" id="mgr_load" onclick="loadMgrLeaves()">🔍 查詢</button>
             <button class="btn btn-ok" id="mgr_export" onclick="exportExcel()">📥 匯出 Excel</button>
@@ -2151,7 +2157,9 @@ async function drawLeaveCalendar(date) {
   // 同時載入請假和加班
   const [resLeave, resOT] = await Promise.all([
     api(leaveParams),
-    api({ action:'getOvertimes', month:monthStr, emp_id: SESSION.emp_id })
+    hasRole('supervisor')
+      ? api({ action:'getOvertimes', month:monthStr })
+      : api({ action:'getOvertimes', month:monthStr, emp_id: SESSION.emp_id })
   ]);
   let evs = resLeave.success ? resLeave.data : [];
   const calOTEvs = resOT.success ? resOT.data : [];
@@ -2164,15 +2172,9 @@ async function drawLeaveCalendar(date) {
       const evId = String(ev.emp_id ?? '');
       return evId === myId; // 空字串、undefined、其他人 → 全部過濾掉
     });
-  } else if (!hasRole('manager')) {
-    // supervisor：看自己部門 + extra_depts（SESSION.extra_depts 為逗號分隔字串）
-    const allowedDepts = [SESSION.dept];
-    if (SESSION.extra_depts) {
-      String(SESSION.extra_depts).split(',').map(d=>d.trim()).filter(Boolean).forEach(d=>allowedDepts.push(d));
-    }
-    // dept 為空的記錄也保留（舊資料可能沒有 dept 欄位）
-    evs = evs.filter(ev => !ev.dept || allowedDepts.includes(String(ev.dept)));
   }
+  // supervisor/manager/admin：後端 canViewEmployee 已過濾，前端不重複過濾
+  // （避免因 dept 欄位空白或不一致造成誤判）
   // manager / admin：不過濾，看全部
 
   const grid = $('lv_calGrid');
